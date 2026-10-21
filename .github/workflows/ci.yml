@@ -1,0 +1,25 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: node --check server/src/index.js
+      - run: node --check server/src/router.js
+      - run: node --check server/src/registry.js
+      - run: node --check server/src/translate/index.js
+      - run: node --check server/src/translate/sse.js
+      - name: smoke test
+        run: |
+          DATA_DIR=./.tmp-data PORT=7899 INITIAL_PASSWORD=ci node server/src/index.js &
+          sleep 4
+          curl -sf http://127.0.0.1:7899/api/health | tee /dev/stderr | grep -q '"ok":true'
+          curl -sf http://127.0.0.1:7899/ -o /dev/null

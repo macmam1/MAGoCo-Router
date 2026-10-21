@@ -1,0 +1,15 @@
+{
+  "name": "magoco-router",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "MAGoCo Router - personal AI gateway (OpenAI/Anthropic compatible) built for ModelScope Studio",
+  "license": "Apache-2.0",
+  "main": "server/src/index.js",
+  "scripts": {
+    "start": "node server/src/index.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.6.2"
+  }
+}
