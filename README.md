@@ -89,6 +89,33 @@ export ANTHROPIC_AUTH_TOKEN=sk-magoco-...
 The gateway speaks the Anthropic Messages API, translates to whichever upstream
 is selected, and translates the answer back.
 
+## Key pool
+
+Some providers are only useful with more than one credential. The pool keeps a
+rotating set of keys per provider and takes care of the boring part:
+
+- **detects the provider** from the key format, then confirms it against the
+  provider endpoint and one token of real inference - a catalogue endpoint can
+  be public, so it cannot prove a key works
+- **rotates**: the least recently used healthy key goes first, so no single key
+  burns the whole quota
+- **quarantines**: a key that is rejected (401/403) is dropped from the
+  rotation, a throttled key (429) gets a cooldown
+- **stores keys sealed** (AES-256-GCM) and only ever shows them masked
+
+Keys can be pasted, imported from a file, or pulled from a source that
+publishes them. The router never uses a key it was not given.
+
+```bash
+# add keys
+curl -X POST http://localhost:7860/api/keypool/import \
+  -H "content-type: application/json" \
+  -d "{\"text\":\"sk-...\\nsk-...\"}"
+
+# check them all
+curl -X POST http://localhost:7860/api/keypool/validate -d "{}"
+```
+
 ## Providers
 
 Built in and working without a key:
