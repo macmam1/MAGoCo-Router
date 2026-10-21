@@ -138,6 +138,7 @@
     <div class="nav" data-tab="models"><span class="ic">≡</span>Models<span class="badge" id="b-mod">–</span></div>
     <div class="navlbl">Access</div>
     <div class="nav" data-tab="keys"><span class="ic">⚿</span>API keys<span class="badge" id="b-keys">0</span></div>
+    <div class="nav" data-tab="keypool"><span class="ic">⛁</span>Key pool<span class="badge" id="b-pool">0</span></div>
     <div class="navlbl">Observability</div>
     <div class="nav" data-tab="usage"><span class="ic">◴</span>Usage</div>
     <div class="nav" data-tab="logs"><span class="ic">≡</span>Logs</div>
@@ -167,9 +168,9 @@ const $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=(s)=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const noKey=(p)=>p&&(p.auth==="none"||(p.auth&&p.auth.type==="none"));
 const TABS={overview:"Dashboard",console:"Console",providers:"Providers",connections:"Connections",
-  models:"Models",keys:"API keys",usage:"Usage",logs:"Logs",settings:"Settings"};
+  models:"Models",keys:"API keys",keypool:"Key pool",usage:"Usage",logs:"Logs",settings:"Settings"};
 let TAB="overview";
-let REG=[], CONN=[], KEYS=[], MODELS=[];
+let REG=[], CONN=[], KEYS=[], MODELS=[], POOL=[];
 
 function toast(m,err){const t=$("#toast");t.innerHTML=m;t.style.display="block";
   t.style.borderColor=err?"#4a2027":"#2a3550";setTimeout(()=>t.style.display="none",3200);}
@@ -194,6 +195,7 @@ async function loadAll(){
   try{CONN=(await api("/api/providers")).connections||[];}catch{}
   try{KEYS=(await api("/api/keys")).keys||[];}catch{}
   $("#b-prov").textContent=REG.length;$("#b-conn").textContent=CONN.length;$("#b-keys").textContent=KEYS.length;
+  try{const p=await api("/api/keypool");POOL=p.keys||[];$("#b-pool").textContent=POOL.length;}catch{}
   try{const m=await api("/v1/models?x=1").catch(()=>({data:[]}));}catch{}
   render();
 }
@@ -218,6 +220,7 @@ function render(){
   if(TAB==="connections")return vConnections();
   if(TAB==="models")return vModels();
   if(TAB==="keys")return vKeys();
+  if(TAB==="keypool")return vKeyPool();
   if(TAB==="usage")return vUsage();
   if(TAB==="logs")return vLogs();
   if(TAB==="settings")return vSettings();
@@ -398,6 +401,98 @@ async function vKeys(){
   $("#k-add").onclick=async()=>{
     try{const r=await jpost("/api/keys",{name:$("#k-name").value});$("#k-name").value="";
       toast("key created: "+r.key.key);loadAll();}catch(e){toast(e.message,true);}
+  };
+}
+
+async function vKeyPool(){
+  show(`<div class="card">
+    <h3>Key pool</h3>
+    <p class="hint">A rotating set of credentials per provider. The router validates each key, uses the healthy ones, rotates to the next when one is rejected, and quarantines the dead ones. Keys are stored sealed and are never shown in full.</p>
+    <div class="split">
+      <div>
+        <label>Paste keys</label>
+        <textarea id="p-text" placeholder="one key per line - a .env file, a json array or a wall of text all work"></textarea>
+        <div class="row" style="margin-top:12px">
+          <div><label>Provider (optional)</label><select id="p-prov"><option value="">detect automatically</option>${REG.map(p=>`<option value="${esc(p.id)}">${esc(p.label)}</option>`).join("")}</select></div>
+          <div style="flex:0"><button class="btn pri" id="p-import">Add to pool</button></div>
+        </div>
+      </div>
+      <div>
+        <label>Key source</label>
+        <input id="p-url" placeholder="https://... a file that publishes free-tier keys" />
+        <div class="row" style="margin-top:12px">
+          <div style="flex:0"><button class="btn" id="p-src">Sync source</button></div>
+        </div>
+        <label style="margin-top:4px">Sources</label>
+        <div id="p-sources" class="muted" style="font-size:12px">none</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Pool</h3>
+    <p class="hint">The least recently used healthy key is picked first, so no single key burns the whole quota.</p>
+    <div style="margin-bottom:12px"><button class="btn sm" id="p-validate">Validate all</button></div>
+    <table><thead><tr><th>Provider</th><th>Key</th><th>Status</th><th>Uses</th><th>Detail</th><th></th></tr></thead>
+    <tbody id="p-rows"></tbody></table>
+  </div>`);
+
+  const draw=()=>{
+    $("#p-rows").innerHTML=POOL.length?POOL.map(k=>{
+      const st=k.status==="working"?"ok":k.status==="dead"?"err":"";
+      return `<tr>
+        <td>${esc(k.provider)}</td>
+        <td class="mono">${esc(k.key)}</td>
+        <td><span class="tag ${st}">${esc(k.status)}</span></td>
+        <td>${k.uses} <span class="muted">/ ${k.failures} fail</span></td>
+        <td class="muted">${esc(k.statusText||"")}</td>
+        <td style="text-align:right">
+          <button class="btn sm" data-check="${esc(k.id)}">check</button>
+          <button class="btn sm danger" data-del="${esc(k.id)}">remove</button>
+        </td></tr>`;
+    }).join(""):'<tr><td colspan="6" class="muted">The pool is empty. Paste a key or add a source above.</td></tr>';
+    $("#p-rows [data-del]").forEach(b=>b.onclick=async()=>{await api(`/api/keypool/${b.dataset.del}`,{method:"DELETE"});loadAll();});
+    $("#p-rows [data-check]").forEach(b=>b.onclick=async()=>{
+      b.textContent="…";
+      const r=await jpost("/api/keypool/validate",{id:b.dataset.check}).catch(e=>({error:e.message}));
+      if(r.error) toast(r.error,true);
+      loadAll();
+    });
+  };
+  draw();
+
+  $("#p-import").onclick=async()=>{
+    const text=$("#p-text").value;
+    if(!text.trim())return toast("nothing to add",true);
+    try{
+      const r=await jpost("/api/keypool/import",{text,provider:$("#p-prov").value});
+      toast(`added ${r.added.length} key(s), skipped ${r.skipped.length}`);
+      $("#p-text").value="";
+      loadAll();
+    }catch(e){toast(e.message,true);}
+  };
+
+  $("#p-src").onclick=async()=>{
+    const url=$("#p-url").value.trim();
+    if(!url)return toast("no url",true);
+    const b=$("#p-src");b.disabled=true;b.textContent="syncing…";
+    try{
+      const r=await jpost("/api/keypool/source",{url,provider:$("#p-prov").value});
+      toast(`source synced: ${r.added.length} new key(s)`);
+      $("#p-url").value="";
+      loadAll();
+    }catch(e){toast(e.message,true);}
+    b.disabled=false;b.textContent="Sync source";
+  };
+
+  $("#p-validate").onclick=async()=>{
+    const b=$("#p-validate");b.disabled=true;b.textContent="validating…";
+    try{
+      const r=await jpost("/api/keypool/validate",{});
+      const dead=(r.results||[]).filter(x=>x.status==="dead").length;
+      toast(`checked ${(r.results||[]).length} key(s), ${dead} dead`);
+    }catch(e){toast(e.message,true);}
+    b.disabled=false;b.textContent="Validate all";
+    loadAll();
   };
 }
 

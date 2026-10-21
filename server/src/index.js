@@ -8,13 +8,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { db, getSettings, updateSettings, nowIso } from "./db.js";
 import { logRequest } from "./log.js";
+import * as keyPool from "./keypool.js";
 import {
   createApiKey, createSessionToken, dashboardPassword, deleteApiKey,
   extractClientKey, findApiKey, listApiKeys, parseCookies, verifySessionToken,
 } from "./auth.js";
 import { BUILTIN_PROVIDERS, providerById } from "./providers.js";
 import * as opencode from "./providers/opencode.js";
-import { getRegistry, getCatalogue, allCatalogues, syncAll, syncRemoteRegistry, startRegistrySync } from "./registry.js";
+import { getRegistry, getCatalogue, allCatalogues, syncAll, syncRemoteRegistry, startRegistrySync, syncProviderModels } from "./registry.js";
 import { dispatch, modelCatalogue, recordUsage, activeConnections } from "./router.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -207,7 +208,17 @@ route("POST", /^\/api\/providers$/, async (req, res, _m, body) => {
   if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
   if (!providerById(body.provider)) return json(res, 400, { error: "unknown provider" });
   const id = crypto.randomUUID();
-  const data = JSON.stringify(body.data || {});
+  const payload = { ...(body.data || {}) };
+  // Store the provider catalogue with the connection, so a model id can be
+  // resolved to the right connection without a prefix.
+  try {
+    const record = getRegistry().find((r) => r.id === body.provider);
+    if (record) {
+      const cat = await syncProviderModels(record);
+      if (cat?.ids?.length) payload.models = cat.ids.slice(0, 2000);
+    }
+  } catch {}
+  const data = JSON.stringify(payload);
   db.prepare(
     "INSERT INTO provider_connections (id, provider, name, email, priority, isActive, data, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
   ).run(id, body.provider, body.name || body.provider, body.email || null, Number(body.priority) || 0, body.isActive === false ? 0 : 1, data, nowIso(), nowIso());
@@ -228,6 +239,63 @@ route("GET", /^\/api\/settings$/, (req, res) => {
 route("PATCH", /^\/api\/settings$/, async (req, res, _m, body) => {
   if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
   json(res, 200, updateSettings(body));
+});
+
+route("GET", /^\/api\/keypool$/, (req, res) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, {
+    keys: keyPool.listPool().map((k) => ({ ...k, key: keyPool.mask(k.key) })),
+    stats: keyPool.poolStats(),
+    sources: keyPool.listSources(),
+  });
+});
+
+route("POST", /^\/api\/keypool\/import$/, (req, res, _m, body) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  const text = String(body.text || "");
+  const result = keyPool.ingestText(text, { source: body.source || "manual", provider: body.provider || "" });
+  json(res, 200, result);
+});
+
+route("POST", /^\/api\/keypool\/source$/, async (req, res, _m, body) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  const url = String(body.url || "").trim();
+  if (!/^https?:\/\//i.test(url)) return json(res, 400, { error: "the source url must be http(s)" });
+  const result = await keyPool.ingestSource(url, { provider: body.provider || "", label: body.label || "" });
+  json(res, result.ok ? 200 : 400, result);
+});
+
+route("GET", /^\/api\/keypool\/sources$/, (req, res) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, { sources: keyPool.listSources() });
+});
+
+route("DELETE", /^\/api\/keypool\/sources\/([\w-]+)$/, (req, res, m) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, { deleted: keyPool.removeSource(m[1]) });
+});
+
+route("POST", /^\/api\/keypool\/validate$/, async (req, res, _m, body) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  if (body.id) {
+    const result = await keyPool.validateKey(body.id);
+    return json(res, result ? 200 : 404, result || { error: "not found" });
+  }
+  const results = await keyPool.validateAll(body.provider || "");
+  json(res, 200, { results: results.map((r) => ({ ...r, key: keyPool.mask(r.key) })), stats: keyPool.poolStats() });
+});
+
+route("POST", /^\/api\/keypool\/identify$/, async (req, res, _m, body) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  const key = String(body.key || "").trim();
+  if (!key) return json(res, 400, { error: "no key" });
+  const result = await keyPool.identifyProvider(key, body.provider || "");
+  json(res, 200, { ...result, key: keyPool.mask(key) });
+});
+
+route("DELETE", /^\/api\/keypool\/([\w-]+)$/, (req, res, m) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, { deleted: keyPool.removeKey(m[1]) });
 });
 
 route("GET", /^\/api\/logs$/, (req, res) => {

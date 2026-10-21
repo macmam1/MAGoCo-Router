@@ -12,6 +12,7 @@
 // "registryUrl" setting) to update the provider definitions themselves.
 import * as opencode from "./providers/opencode.js";
 import * as pollinations from "./providers/pollinations.js";
+import { setRegistryCache } from "./providers.js";
 
 export const REGISTRY_VERSION = 1;
 
@@ -63,7 +64,10 @@ export const BUILTIN_REGISTRY = [
   { id: "huggingface", label: "Hugging Face", group: "paid", protocol: "openai", baseUrl: "https://router.huggingface.co/v1", chatPath: "/chat/completions", modelsUrl: "https://router.huggingface.co/v1/models", auth: { type: "bearer", header: "authorization", prefix: "Bearer " }, docs: "https://huggingface.co/settings/tokens" },
   { id: "moonshot", label: "Moonshot (Kimi)", group: "paid", protocol: "openai", baseUrl: "https://api.moonshot.cn/v1", chatPath: "/chat/completions", modelsUrl: "https://api.moonshot.cn/v1/models", auth: { type: "bearer", header: "authorization", prefix: "Bearer " }, docs: "https://platform.moonshot.cn/console/api-keys" },
   { id: "zhipu", label: "Zhipu GLM", group: "paid", protocol: "openai", baseUrl: "https://open.bigmodel.cn/api/paas/v4", chatPath: "/chat/completions", modelsUrl: "https://open.bigmodel.cn/api/paas/v4/models", auth: { type: "bearer", header: "authorization", prefix: "Bearer " }, docs: "https://open.bigmodel.cn/usercenter/apikeys" },
-  { id: "ollama", label: "Ollama (local)", group: "local", protocol: "openai", baseUrl: "http://127.0.0.1:11434/v1", chatPath: "/chat/completions", modelsUrl: "http://127.0.01:11434/v1/models", auth: { type: "none" }, docs: "https://ollama.com" },
+  { id: "modelscope", label: "ModelScope", group: "paid", protocol: "openai", baseUrl: "https://api-inference.modelscope.cn/v1", chatPath: "/chat/completions", modelsUrl: "https://api-inference.modelscope.cn/v1/models", auth: { type: "bearer", header: "authorization", prefix: "Bearer " }, docs: "https://modelscope.cn/my/myaccesstoken" },
+  { id: "llm7", label: "LLM7.io", group: "paid", protocol: "openai", baseUrl: "https://api.llm7.io/v1", chatPath: "/chat/completions", modelsUrl: "https://api.llm7.io/v1/models", auth: { type: "bearer", header: "authorization", prefix: "Bearer " }, docs: "https://token.llm7.io" },
+  { id: "ovh", label: "OVHcloud AI Endpoints", group: "paid", protocol: "openai", baseUrl: "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1", chatPath: "/chat/completions", modelsUrl: "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/models", auth: { type: "bearer", header: "authorization", prefix: "Bearer " }, docs: "https://www.ovhcloud.com/en/public-cloud/ai-endpoints/catalog/" },
+  { id: "ollama", label: "Ollama (local)", group: "local", protocol: "openai", baseUrl: "http://127.0.0.1:11434/v1", chatPath: "/chat/completions", modelsUrl: "http://127.0.0.1:11434/v1/models", auth: { type: "none" }, docs: "https://ollama.com" },
 ];
 
 /* ------------------------------ transforms ------------------------------ */
@@ -112,6 +116,14 @@ export function getRegistry() {
   return registry;
 }
 
+// Keep the providers module in sync: a connection may point at any provider
+// in the registry, not only the ones in its own static table.
+function publishRegistry() {
+  try {
+    setRegistryCache(registry);
+  } catch {}
+}
+
 export function getCatalogue(providerId) {
   return catalogues.get(providerId) || { ids: [], at: 0 };
 }
@@ -124,6 +136,7 @@ export function allCatalogues() {
 export function applyRegistryDocument(doc) {
   if (!doc || !Array.isArray(doc.providers)) return false;
   registry = doc.providers;
+  publishRegistry();
   return true;
 }
 
@@ -181,3 +194,6 @@ export function startRegistrySync(intervalMs = 15 * 60 * 1000) {
   timer = setInterval(() => { syncAll(); }, intervalMs);
   if (typeof timer.unref === "function") timer.unref();
 }
+
+// Publish the built-in registry to the providers module on load.
+publishRegistry();

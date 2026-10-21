@@ -78,6 +78,35 @@ CREATE TABLE IF NOT EXISTS request_log (
 );
 CREATE INDEX IF NOT EXISTS idx_log_ts ON request_log(ts);
 
+CREATE TABLE IF NOT EXISTS key_pool (
+  id            TEXT PRIMARY KEY,
+  provider      TEXT NOT NULL,
+  sealedKey     TEXT NOT NULL,
+  keyHash       TEXT,
+  source        TEXT,
+  label         TEXT,
+  status        TEXT NOT NULL DEFAULT "unknown",
+  statusText    TEXT,
+  checkedAt     TEXT,
+  lastUsedAt    TEXT,
+  uses          INTEGER NOT NULL DEFAULT 0,
+  failures      INTEGER NOT NULL DEFAULT 0,
+  cooldownUntil TEXT,
+  meta          TEXT,
+  createdAt     TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_keypool_sealed ON key_pool(provider, sealedKey);
+
+CREATE TABLE IF NOT EXISTS key_pool_sources (
+  id         TEXT PRIMARY KEY,
+  url        TEXT NOT NULL UNIQUE,
+  provider   TEXT,
+  label      TEXT,
+  enabled    INTEGER NOT NULL DEFAULT 1,
+  lastSyncAt TEXT,
+  addedAt    TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS settings (
   id    INTEGER PRIMARY KEY CHECK (id = 1),
   data  TEXT NOT NULL

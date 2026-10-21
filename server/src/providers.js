@@ -77,7 +77,38 @@ export const BUILTIN_PROVIDERS = [
 export const BUILTIN_MAP = new Map(BUILTIN_PROVIDERS.map((p) => [p.id, p]));
 
 export function providerById(id) {
-  return BUILTIN_MAP.get(id) || null;
+  if (BUILTIN_MAP.has(id)) return BUILTIN_MAP.get(id);
+  // The registry knows more providers than the static table - a connection may
+  // point at any of them.
+  const record = registryRecord(id);
+  if (record) {
+    return {
+      protocol: record.protocol || "openai",
+      baseUrl: record.baseUrl || "",
+      authHeader: record.auth?.header || (record.auth?.type === "none" ? "" : "authorization"),
+      authPrefix: record.auth?.prefix ?? (record.auth?.type === "none" ? "" : "Bearer "),
+      chatPath: record.chatPath || "/chat/completions",
+      registry: record,
+    };
+  }
+  return null;
+}
+
+// The registry is loaded lazily: providers.js and registry.js would otherwise
+// import each other in a cycle.
+let registryCache = null;
+function registryRecord(id) {
+  if (registryCache === null) {
+    try {
+      registryCache = globalThis.__magocoRegistry || [];
+    } catch {
+      registryCache = [];
+    }
+  }
+  return registryCache.find((r) => r.id === id) || null;
+}
+export function setRegistryCache(records) {
+  registryCache = Array.isArray(records) ? records : [];
 }
 
 /** A connection stores the secrets; the provider record holds the static shape. */

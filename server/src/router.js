@@ -2,6 +2,7 @@
 // fallback chain when an attempt fails, translate between protocols and record
 // usage.
 import { db, nowIso } from "./db.js";
+import { pickKey, reportKey as reportPoolKey } from "./keypool.js";
 import { connectionShape, providerById } from "./providers.js";
 import * as opencode from "./providers/opencode.js";
 import { getRegistry, getCatalogue, transformFor } from "./registry.js";
@@ -87,14 +88,24 @@ export function resolveTargets(requestedModel) {
       .filter(Boolean);
   }
 
+  // the full id may be a catalogue entry of a configured connection
+  const exactEverywhere = connections.filter((c) => (c.models || []).includes(model));
+  if (exactEverywhere.length) {
+    return exactEverywhere.map((conn) => ({ conn, model, free: !!conn.registry }));
+  }
+
   // provider/model
   const slash = model.indexOf("/");
   if (slash > 0) {
     const provider = model.slice(0, slash);
     const rest = model.slice(slash + 1);
     const conn = connections.find((c) => c.provider === provider);
-    if (!conn) return [];
-    return [{ conn, model: rest || conn.modelPrefix || conn.defaultModel || "" }];
+    if (conn) return [{ conn, model: rest || conn.modelPrefix || conn.defaultModel || "" }];
+    // The slash can belong to the model id itself (Qwen/Qwen2.5-7B-Instruct),
+    // so the full id is tried on every configured connection.
+    const asFullId = connections.filter((c) => !c.registry).map((c) => ({ conn: c, model }));
+    if (asFullId.length) return asFullId;
+    return [];
   }
 
   // bare model: the keyless registry providers first, then the configured ones.
@@ -115,13 +126,29 @@ export function resolveTargets(requestedModel) {
     .map((conn) => ({ conn, model: conn.defaultModel || model }));
 }
 
-function buildHeaders(conn) {
+function buildHeaders(conn, keyOverride) {
   const headers = { "content-type": "application/json" };
-  if (conn.apiKey) {
+  const key = keyOverride || conn.apiKey;
+  if (key) {
     const header = conn.authHeader || "authorization";
-    headers[header] = `${conn.authPrefix || ""}${conn.apiKey}`;
+    headers[header] = `${conn.authPrefix || ""}${key}`;
   }
   return headers;
+}
+
+// The key candidates for one connection: the healthy pool keys first, the
+// connection key last. When the pool has nothing for this provider the
+// connection key is used alone.
+function keyCandidates(conn) {
+  const list = [];
+  try {
+    for (const entry of pickKey(conn.provider, 3)) {
+      if (entry.key) list.push({ key: entry.key, pooled: true });
+    }
+  } catch {}
+  if (conn.apiKey) list.push({ key: conn.apiKey, pooled: false });
+  if (!list.length) list.push({ key: "", pooled: false });
+  return list.slice(0, 4);
 }
 
 const responseAliasMaps = new WeakMap();
@@ -181,16 +208,58 @@ export async function dispatch({ clientProtocol, body, apiKeyId, stream = false 
       headers = buildHeaders(conn);
     }
 
+    // Try the key candidates in order. A key the pool rejected (401/403) or
+    // that is throttled (429) is reported back and the next one takes over,
+    // inside the same request.
+    const candidates = keyCandidates(conn);
+    let res = null;
+    let lastError = "";
+    let usedKey = null;
+    for (const cand of candidates) {
+      const attemptHeaders = cand.pooled
+        ? { ...headers, [conn.authHeader || "authorization"]: `${conn.authPrefix || ""}${cand.key}` }
+        : headers;
+      try {
+        res = await fetch(url, {
+          method: "POST",
+          headers: attemptHeaders,
+          body: JSON.stringify(payload),
+        });
+      } catch (err) {
+        lastError = String(err.message || err);
+        res = null;
+        continue;
+      }
+      if (res.status !== 401 && res.status !== 403 && res.status !== 429) {
+        usedKey = cand;
+        break;
+      }
+      const text = await res.text().catch(() => "");
+      if (cand.pooled) {
+        reportPoolKey(conn.provider, cand.key, {
+          status: res.status,
+          retryAfter: res.headers.get("retry-after"),
+          error: text.slice(0, 120),
+        });
+      }
+      lastError = `key rejected with ${res.status}`;
+      res = null;
+    }
+
     try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payload),
-      });
+      if (!res) {
+        attempts.push({ conn: conn.provider, status: 0, error: lastError || "no usable key" });
+        continue;
+      }
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         attempts.push({ conn: conn.provider, status: res.status, error: text.slice(0, 200) });
         continue;
+      }
+      // The key that served the request is marked as working, so the rotation
+      // keeps it in the pool and stops hammering it.
+      if (usedKey?.pooled) {
+        reportPoolKey(conn.provider, usedKey.key, { status: 200 });
       }
       const aliasMap = responseAliasMaps.get(payload);
       const upstreamType = res.headers.get("content-type") || "";
