@@ -1,6 +1,6 @@
 # Behavioural contract
 
-The reference implementation (9Router, Apache-2.0) was inspected as a shipped
+The reference implementation (MAGoCo reference, Apache-2.0) was inspected as a shipped
 artifact - the deployed JavaScript bundle was captured and statically analysed -
 to derive the contract this implementation targets. This document records what
 was extracted, so the contract stays explicit instead of implicit in a diff.
@@ -21,7 +21,7 @@ The gateway in front of the studio strips `Authorization`, so the reference
 implementation accepts the client key through several channels. MAGoCo Router
 accepts, in this order:
 
-1. `x-9router-key: <key>`
+1. `x-magoco-key: <key>`
 2. `Authorization: Bearer <key>`
 3. `?api_key=<key>` / `?key=<key>` (query fallback)
 
@@ -90,7 +90,7 @@ These are properties of the ModelScope gateway, measured rather than assumed:
 | observation | consequence |
 |---|---|
 | a request with `Sec-Fetch-Dest: document` is answered with a 302 to the studio page | the edge proxy strips `sec-fetch-*` before forwarding |
-| a request carrying `Authorization` is rejected with "does not support direct access via SDK Token" | the edge proxy moves the bearer token to `x-9router-key` |
+| a request carrying `Authorization` is rejected with "does not support direct access via SDK Token" | the edge proxy moves the bearer token to `x-magoco-key` |
 | the value of the `_rsc` query parameter is emptied | Next.js answers a client-side navigation with a 307; the edge proxy resolves that redirect itself |
 | the response body of an error status is emptied and the response is held for ~6s | the dashboard therefore keeps its session in a cookie and never relies on the error body |
 | `process.env` is inlined at build time in the proxy bundle | the session secret is mirrored into a file so both bundles agree |

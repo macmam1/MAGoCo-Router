@@ -1,125 +1,196 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="night" dir="ltr">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>MAGoCo Router</title>
 <style>
-  :root{
-    --bg:#08080a; --bg2:#0d0d11; --panel:#111116; --panel2:#17171d; --panel3:#1e1e26;
-    --line:#26262f; --line2:#33333f;
-    --fg:#f2f2f6; --muted:#8a8a99; --dim:#5f5f6e;
-    --brand:#7c5cff; --brand2:#4f8cff; --ok:#2fd98a; --warn:#ffb020; --err:#ff5c5c;
-    --r:14px; --r2:10px;
-    --sh:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.28);
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0;color:var(--fg);background:var(--bg);
-    font:14px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
-    -webkit-font-smoothing:antialiased;
-  }
-  a{color:var(--brand2);text-decoration:none}
-  code,pre,.mono{font-family:ui-monospace,SFMono-Regular,"JetBrains Mono",Menlo,Consolas,monospace}
-  ::-webkit-scrollbar{width:10px;height:10px}
-  ::-webkit-scrollbar-thumb{background:#2a2a34;border-radius:8px;border:2px solid var(--bg)}
-  ::-webkit-scrollbar-track{background:transparent}
+/* ============================== themes ============================== */
+:root{
+  --r:14px; --r2:10px; --r3:8px;
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans Arabic", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+}
+[data-theme="night"]{
+  --bg:#07070a; --bg2:#0b0b10; --surface:#101016; --surface2:#16161e; --surface3:#1d1d27;
+  --line:#23232e; --line2:#2f2f3d;
+  --fg:#f4f4f8; --muted:#9696a8; --dim:#63637a;
+  --accent:#7c6cff; --accent2:#4d9dff; --accent-fg:#08080c;
+  --ok:#35d996; --warn:#ffb020; --err:#ff5f6d;
+  --shadow:0 1px 2px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.35);
+  --grid: rgba(255,255,255,.045);
+}
+[data-theme="day"]{
+  --bg:#f6f7fb; --bg2:#eef0f6; --surface:#ffffff; --surface2:#f7f8fc; --surface3:#eef0f7;
+  --line:#e3e6ef; --line2:#d2d6e3;
+  --fg:#14161d; --muted:#5b6070; --dim:#878da0;
+  --accent:#5b4bff; --accent2:#1d7dff; --accent-fg:#ffffff;
+  --ok:#12a06a; --warn:#b97400; --err:#d8384a;
+  --shadow:0 1px 2px rgba(16,20,40,.06), 0 10px 28px rgba(16,20,40,.08);
+  --grid: rgba(20,25,45,.04);
+}
+[data-theme="forest"]{
+  --bg:#060d0a; --bg2:#0a1310; --surface:#0e1a15; --surface2:#12211b; --surface3:#172c24;
+  --line:#1d332a; --line2:#274a3c;
+  --fg:#eafaf2; --muted:#8fb3a3; --dim:#5d7d6f;
+  --accent:#2fd98a; --accent2:#39d0c0; --accent-fg:#04120c;
+  --ok:#2fd98a; --warn:#ffb020; --err:#ff5f6d;
+  --shadow:0 1px 2px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.4);
+  --grid: rgba(255,255,255,.04);
+}
+[data-theme="sunset"]{
+  --bg:#0d0808; --bg2:#140b0a; --surface:#1a0f0e; --surface2:#221413; --surface3:#2c1a19;
+  --line:#38201d; --line2:#4d2a26;
+  --fg:#fff2ee; --muted:#c39a92; --dim:#8a6660;
+  --accent:#ff7a59; --accent2:#ffb457; --accent-fg:#1a0806;
+  --ok:#4fd39a; --warn:#ffc046; --err:#ff6b7d;
+  --shadow:0 1px 2px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.4);
+  --grid: rgba(255,255,255,.04);
+}
+[data-theme="royal"]{
+  --bg:#06070f; --bg2:#0a0c18; --surface:#0e1120; --surface2:#141830; --surface3:#1b2040;
+  --line:#222847; --line2:#2e3660;
+  --fg:#eef0ff; --muted:#9aa0c8; --dim:#6a7096;
+  --accent:#3d6bff; --accent2:#8a5cff; --accent-fg:#05060f;
+  --ok:#35d996; --warn:#ffb020; --err:#ff5f6d;
+  --shadow:0 1px 2px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.4);
+  --grid: rgba(255,255,255,.04);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 var(--font);
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(900px 500px at 12% -10%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 65%),
+    radial-gradient(700px 420px at 92% 0%, color-mix(in srgb, var(--accent2) 12%, transparent), transparent 60%);
+}
+a{color:var(--accent2);text-decoration:none}
+code,pre,.mono{font-family:var(--mono)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:99px;border:3px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-track{background:transparent}
 
-  /* ---------------- shell ---------------- */
-  .app{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
-  .side{
-    background:linear-gradient(180deg,#0b0b0f,#0a0a0d);border-right:1px solid var(--line);
-    padding:18px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px
-  }
-  .brand{display:flex;align-items:center;gap:11px;padding:6px 8px 18px}
-  .mark{
-    width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-weight:800;
-    background:linear-gradient(135deg,var(--brand),var(--brand2));color:#08080c;font-size:15px;letter-spacing:-.5px;
-    box-shadow:0 4px 14px rgba(124,92,255,.35)
-  }
-  .brand b{display:block;font-size:14px;letter-spacing:-.2px}
-  .brand span{color:var(--dim);font-size:11px}
-  .navlbl{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.09em;padding:14px 10px 6px}
-  .nav{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:var(--r2);color:var(--muted);
-    cursor:pointer;border:1px solid transparent;font-size:13.5px;user-select:none}
-  .nav:hover{background:var(--panel2);color:var(--fg)}
-  .nav.on{background:linear-gradient(90deg,rgba(124,92,255,.16),rgba(79,140,255,.06));color:var(--fg);border-color:#2c2a44}
-  .nav .ic{width:17px;text-align:center;opacity:.85}
-  .nav .badge{margin-left:auto;font-size:10.5px;color:var(--dim);background:var(--panel3);padding:1px 7px;border-radius:99px}
-  .sidefoot{margin-top:auto;border-top:1px solid var(--line);padding-top:12px;font-size:11.5px;color:var(--dim)}
-  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px rgba(47,217,138,.14);margin-right:7px}
-  .dot.bad{background:var(--err);box-shadow:0 0 0 3px rgba(255,92,92,.14)}
+/* ============================== shell ============================== */
+.app{position:relative;z-index:1;display:grid;grid-template-columns:252px 1fr;min-height:100vh}
+.side{
+  position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:3px;
+  padding:16px 13px;background:color-mix(in srgb, var(--bg2) 82%, transparent);
+  border-inline-end:1px solid var(--line);backdrop-filter:blur(18px);
+}
+.brand{display:flex;align-items:center;gap:11px;padding:8px 9px 16px}
+.mark{
+  width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-weight:800;font-size:15px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:var(--accent-fg);
+  box-shadow:0 6px 18px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.brand b{display:block;font-size:14px;letter-spacing:-.2px}
+.brand span{color:var(--dim);font-size:11px}
+.navlbl{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.1em;padding:14px 10px 6px}
+.nav{
+  display:flex;align-items:center;gap:10px;padding:8px 11px;border-radius:var(--r2);
+  color:var(--muted);cursor:pointer;border:1px solid transparent;font-size:13.5px;user-select:none;
+  transition:background .12s, color .12s;
+}
+.nav:hover{background:var(--surface2);color:var(--fg)}
+.nav.on{
+  color:var(--fg);border-color:color-mix(in srgb, var(--accent) 34%, transparent);
+  background:linear-gradient(90deg, color-mix(in srgb, var(--accent) 18%, transparent), transparent 85%);
+}
+.nav .ic{width:18px;text-align:center;opacity:.9;font-size:13px}
+.nav .badge{margin-inline-start:auto;font-size:10.5px;color:var(--dim);background:var(--surface3);padding:1px 7px;border-radius:99px}
+.sidefoot{margin-top:auto;border-top:1px solid var(--line);padding-top:12px;font-size:11.5px;color:var(--dim)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent);margin-inline-end:7px}
+.dot.bad{background:var(--err);box-shadow:0 0 0 3px color-mix(in srgb, var(--err) 22%, transparent)}
+.main{min-width:0;display:flex;flex-direction:column}
+.top{
+  display:flex;align-items:center;gap:12px;padding:14px 26px;border-bottom:1px solid var(--line);
+  background:color-mix(in srgb, var(--bg) 78%, transparent);backdrop-filter:blur(16px);
+  position:sticky;top:0;z-index:9;
+}
+.top h1{margin:0;font-size:16px;letter-spacing:-.3px}
+.top .sub{color:var(--dim);font-size:12px}
+.content{padding:22px 26px 70px;max-width:1320px;width:100%}
 
-  .main{min-width:0;display:flex;flex-direction:column}
-  .top{
-    display:flex;align-items:center;gap:14px;padding:16px 28px;border-bottom:1px solid var(--line);
-    background:rgba(8,8,10,.82);backdrop-filter:blur(14px);position:sticky;top:0;z-index:9
-  }
-  .top h1{margin:0;font-size:16px;letter-spacing:-.2px}
-  .top .sub{color:var(--dim);font-size:12px}
-  .grow{flex:1}
-  .content{padding:24px 28px 60px;max-width:1240px;width:100%}
-
-  /* ---------------- primitives ---------------- */
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;box-shadow:var(--sh);margin-bottom:16px}
-  .card>h3{margin:0 0 3px;font-size:14.5px;letter-spacing:-.1px}
-  .card>p.hint{margin:0 0 15px;color:var(--muted);font-size:12.5px}
-  .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(215px,1fr))}
-  .stat{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:var(--r);padding:16px 18px}
-  .stat .k{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.07em}
-  .stat .v{font-size:26px;font-weight:700;letter-spacing:-.8px;margin-top:5px}
-  .stat .s{color:var(--muted);font-size:11.5px;margin-top:3px}
-  .btn{background:var(--panel3);border:1px solid var(--line2);color:var(--fg);padding:8px 14px;border-radius:var(--r2);
-    cursor:pointer;font:inherit;font-size:13px;transition:.12s}
-  .btn:hover{border-color:#454556;background:#23232c}
-  .btn.pri{background:linear-gradient(135deg,var(--brand),var(--brand2));border:0;color:#07070b;font-weight:650}
-  .btn.pri:hover{filter:brightness(1.08)}
-  .btn.danger{background:#2a1416;border-color:#54222a;color:#ff9d9d}
-  .btn.sm{padding:5px 10px;font-size:12px}
-  .btn:disabled{opacity:.5;cursor:not-allowed}
-  label{display:block;font-size:11.5px;color:var(--muted);margin:0 0 6px}
-  input,select,textarea{
-    width:100%;background:#0a0a0e;border:1px solid var(--line);color:var(--fg);
-    padding:9px 11px;border-radius:var(--r2);font:inherit;outline:none;transition:.12s
-  }
-  input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(124,92,255,.13)}
-  textarea{resize:vertical;min-height:76px}
-  .row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px}
-  .row>div{flex:1;min-width:165px}
-  table{width:100%;border-collapse:collapse;font-size:12.5px}
-  th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-  th{color:var(--dim);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em}
-  tr:last-child td{border-bottom:0}
-  .tag{display:inline-block;font-size:10.5px;padding:2px 8px;border-radius:99px;border:1px solid var(--line2);color:var(--muted)}
-  .tag.free{color:#7ff0bb;border-color:#1f5340;background:rgba(47,217,138,.08)}
-  .tag.paid{color:#ffc46b;border-color:#54401f;background:rgba(255,176,32,.07)}
-  .tag.local{color:#a9b7ff;border-color:#2f3a63}
-  .tag.err{color:#ff9d9d;border-color:#5a242c}
-  .tag.ok{color:#7ff0bb;border-color:#1f5340}
-  .provs{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
-  .prov{background:var(--panel2);border:1px solid var(--line);border-radius:var(--r2);padding:14px 15px}
-  .prov .hd{display:flex;align-items:center;gap:9px;margin-bottom:7px}
-  .prov .hd b{font-size:13.5px}
-  .prov .mt{color:var(--muted);font-size:12px;line-height:1.5}
-  .prov .ft{display:flex;align-items:center;gap:8px;margin-top:11px}
-  .key{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#0a0a0e;border:1px solid var(--line);padding:3px 8px;border-radius:7px}
-  .msg{padding:11px 13px;border-radius:10px;font-size:12.5px;margin:0 0 12px;border:1px solid var(--line)}
-  .msg.err{color:#ffb0b0;border-color:#4a2027;background:rgba(255,92,92,.07)}
-  .msg.ok{color:#a8f0cd;border-color:#1f5340;background:rgba(47,217,138,.08)}
-  .toast{position:fixed;right:22px;bottom:22px;background:var(--panel2);border:1px solid var(--line2);
-    padding:11px 15px;border-radius:10px;box-shadow:var(--sh);display:none;z-index:20;max-width:380px}
-  .chat{background:#0a0a0e;border:1px solid var(--line);border-radius:var(--r2);padding:12px;min-height:150px;max-height:340px;overflow:auto}
-  .chat .m{padding:7px 10px;border-radius:9px;margin-bottom:7px;font-size:13px;white-space:pre-wrap}
-  .chat .m.u{background:#1c2a4a;margin-left:26px}
-  .chat .m.a{background:var(--panel3);margin-right:26px}
-  .barchart{display:flex;align-items:flex-end;gap:5px;height:110px;padding:10px 0}
-  .barchart .b{flex:1;background:linear-gradient(180deg,var(--brand2),var(--brand));border-radius:5px 5px 0 0;min-height:3px;position:relative}
-  .barchart .b span{position:absolute;top:-17px;left:0;right:0;text-align:center;font-size:10px;color:var(--muted)}
-  .hide{display:none!important}
-  .login{max-width:400px;margin:12vh auto}
-  .split{display:grid;gap:16px;grid-template-columns:1.25fr .75fr}
-  @media(max-width:900px){.app{grid-template-columns:1fr}.side{position:static;height:auto}.split{grid-template-columns:1fr}}
+/* ============================== primitives ============================== */
+.card{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  padding:18px 20px;box-shadow:var(--shadow);margin-bottom:16px;position:relative;overflow:hidden;
+}
+.card>h3{margin:0 0 3px;font-size:14.5px;letter-spacing:-.2px;display:flex;align-items:center;gap:8px}
+.card>p.hint{margin:0 0 15px;color:var(--muted);font-size:12.5px}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(212px,1fr))}
+.stat{
+  background:linear-gradient(180deg,var(--surface2),var(--surface));border:1px solid var(--line);
+  border-radius:var(--r);padding:15px 17px;position:relative;overflow:hidden;
+}
+.stat::after{content:"";position:absolute;inset-inline-end:-30px;top:-30px;width:90px;height:90px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 22%,transparent),transparent 70%)}
+.stat .k{color:var(--dim);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em}
+.stat .v{font-size:25px;font-weight:700;letter-spacing:-.8px;margin-top:4px}
+.stat .s{color:var(--muted);font-size:11.5px;margin-top:2px}
+.btn{
+  background:var(--surface3);border:1px solid var(--line2);color:var(--fg);padding:8px 13px;border-radius:var(--r2);
+  cursor:pointer;font:inherit;font-size:13px;transition:.12s;white-space:nowrap;
+}
+.btn:hover{border-color:var(--accent);color:var(--fg)}
+.btn.pri{background:linear-gradient(135deg,var(--accent),var(--accent2));border:0;color:var(--accent-fg);font-weight:650}
+.btn.pri:hover{filter:brightness(1.07)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--err);border-color:color-mix(in srgb,var(--err) 35%,transparent)}
+.btn.sm{padding:4px 10px;font-size:12px;border-radius:var(--r3)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+label{display:block;font-size:11.5px;color:var(--muted);margin:0 0 6px}
+input,select,textarea{
+  width:100%;background:var(--bg2);border:1px solid var(--line);color:var(--fg);
+  padding:9px 11px;border-radius:var(--r2);font:inherit;outline:none;transition:.12s;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)}
+textarea{resize:vertical;min-height:74px}
+.row{display:flex;gap:11px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px}
+.row>div{flex:1;min-width:160px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:start;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--dim);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em}
+tr:last-child td{border-bottom:0}
+.tag{display:inline-block;font-size:10.5px;padding:2px 8px;border-radius:99px;border:1px solid var(--line2);color:var(--muted)}
+.tag.free{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent);background:color-mix(in srgb,var(--ok) 10%,transparent)}
+.tag.paid{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,transparent);background:color-mix(in srgb,var(--warn) 9%,transparent)}
+.tag.local{color:var(--accent2);border-color:color-mix(in srgb,var(--accent2) 40%,transparent)}
+.tag.err{color:var(--err);border-color:color-mix(in srgb,var(--err) 40%,transparent)}
+.tag.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent)}
+.provs{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(272px,1fr))}
+.prov{background:var(--surface2);border:1px solid var(--line);border-radius:var(--r2);padding:14px 15px;transition:.12s}
+.prov:hover{border-color:var(--line2);transform:translateY(-1px)}
+.prov .hd{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+.prov .hd b{font-size:13.5px}
+.prov .mt{color:var(--muted);font-size:12px;line-height:1.5}
+.prov .ft{display:flex;align-items:center;gap:8px;margin-top:11px;flex-wrap:wrap}
+.key{font-family:var(--mono);font-size:12px;background:var(--bg2);border:1px solid var(--line);padding:3px 8px;border-radius:7px}
+.msg{padding:10px 13px;border-radius:var(--r2);font-size:12.5px;margin:0 0 12px;border:1px solid var(--line)}
+.msg.err{color:var(--err);border-color:color-mix(in srgb,var(--err) 35%,transparent);background:color-mix(in srgb,var(--err) 8%,transparent)}
+.msg.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,transparent);background:color-mix(in srgb,var(--ok) 8%,transparent)}
+.toast{position:fixed;inset-inline-end:22px;bottom:22px;background:var(--surface2);border:1px solid var(--line2);
+  padding:11px 15px;border-radius:var(--r2);box-shadow:var(--shadow);display:none;z-index:20;max-width:400px}
+.chat{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r2);padding:12px;min-height:160px;max-height:420px;overflow:auto}
+.chat .m{padding:8px 11px;border-radius:11px;margin-bottom:8px;font-size:13px;white-space:pre-wrap;line-height:1.6}
+.chat .m.u{background:color-mix(in srgb,var(--accent) 20%,transparent);margin-inline-start:30px}
+.chat .m.a{background:var(--surface3);margin-inline-end:30px}
+.chart{display:flex;align-items:flex-end;gap:4px;height:120px;padding:14px 0 0}
+.chart .b{flex:1;background:linear-gradient(180deg,var(--accent2),var(--accent));border-radius:5px 5px 0 0;min-height:3px;position:relative}
+.chart .b span{position:absolute;top:-16px;inset-inline:0;text-align:center;font-size:10px;color:var(--muted)}
+.spark{height:34px;display:flex;align-items:flex-end;gap:2px;margin-top:9px}
+.spark i{flex:1;background:color-mix(in srgb,var(--accent) 65%,transparent);border-radius:2px 2px 0 0;min-height:2px}
+.hide{display:none!important}
+.login{max-width:390px;margin:14vh auto}
+.split{display:grid;gap:16px;grid-template-columns:1.3fr .7fr}
+.switch{display:inline-flex;background:var(--surface3);border:1px solid var(--line);border-radius:99px;padding:2px}
+.switch button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:12px;padding:4px 11px;border-radius:99px;cursor:pointer}
+.switch button.on{background:var(--accent);color:var(--accent-fg);font-weight:600}
+.sect{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.09em;margin:18px 0 10px}
+@media(max-width:940px){.app{grid-template-columns:1fr}.side{position:static;height:auto}.split{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -127,34 +198,45 @@
   <aside class="side">
     <div class="brand">
       <div class="mark">M</div>
-      <div><b>MAGoCo Router</b><span>personal AI gateway</span></div>
+      <div><b>MAGoCo Router</b><span data-i18n="tagline">personal AI gateway</span></div>
     </div>
-    <div class="navlbl">Overview</div>
-    <div class="nav on" data-tab="overview"><span class="ic">◈</span>Dashboard</div>
-    <div class="nav" data-tab="console"><span class="ic">▸</span>Console</div>
-    <div class="navlbl">Routing</div>
-    <div class="nav" data-tab="providers"><span class="ic">◇</span>Providers<span class="badge" id="b-prov">–</span></div>
-    <div class="nav" data-tab="connections"><span class="ic">⇄</span>Connections<span class="badge" id="b-conn">0</span></div>
-    <div class="nav" data-tab="models"><span class="ic">≡</span>Models<span class="badge" id="b-mod">–</span></div>
-    <div class="navlbl">Access</div>
-    <div class="nav" data-tab="keys"><span class="ic">⚿</span>API keys<span class="badge" id="b-keys">0</span></div>
-    <div class="nav" data-tab="keypool"><span class="ic">⛁</span>Key pool<span class="badge" id="b-pool">0</span></div>
-    <div class="navlbl">Observability</div>
-    <div class="nav" data-tab="usage"><span class="ic">◴</span>Usage</div>
-    <div class="nav" data-tab="logs"><span class="ic">≡</span>Logs</div>
-    <div class="nav" data-tab="settings"><span class="ic">⚙</span>Settings</div>
+    <div class="navlbl" data-i18n="nav.overview">Overview</div>
+    <div class="nav on" data-tab="overview"><span class="ic">◈</span><span data-i18n="tab.overview">Dashboard</span></div>
+    <div class="nav" data-tab="console"><span class="ic">▷</span><span data-i18n="tab.console">Console</span></div>
+    <div class="navlbl" data-i18n="nav.routing">Routing</div>
+    <div class="nav" data-tab="combos"><span class="ic">⛓</span><span data-i18n="tab.combos">Combos</span><span class="badge" id="b-combo">0</span></div>
+    <div class="nav" data-tab="providers"><span class="ic">◇</span><span data-i18n="tab.providers">Providers</span><span class="badge" id="b-prov">–</span></div>
+    <div class="nav" data-tab="connections"><span class="ic">⇄</span><span data-i18n="tab.connections">Connections</span><span class="badge" id="b-conn">0</span></div>
+    <div class="nav" data-tab="models"><span class="ic">≡</span><span data-i18n="tab.models">Models</span><span class="badge" id="b-mod">–</span></div>
+    <div class="navlbl" data-i18n="nav.access">Access</div>
+    <div class="nav" data-tab="keys"><span class="ic">⚿</span><span data-i18n="tab.keys">API keys</span><span class="badge" id="b-keys">0</span></div>
+    <div class="nav" data-tab="keypool"><span class="ic">⛁</span><span data-i18n="tab.keypool">Key pool</span><span class="badge" id="b-pool">0</span></div>
+    <div class="navlbl" data-i18n="nav.observe">Observability</div>
+    <div class="nav" data-tab="health"><span class="ic">❤</span><span data-i18n="tab.health">Health</span></div>
+    <div class="nav" data-tab="usage"><span class="ic">◴</span><span data-i18n="tab.usage">Usage</span></div>
+    <div class="nav" data-tab="logs"><span class="ic">≡</span><span data-i18n="tab.logs">Logs</span></div>
+    <div class="nav" data-tab="sessions"><span class="ic">◔</span><span data-i18n="tab.sessions">Sessions</span></div>
+    <div class="nav" data-tab="backups"><span class="ic">⛁</span><span data-i18n="tab.backups">Backups</span></div>
+    <div class="nav" data-tab="telegram"><span class="ic">✈</span><span data-i18n="tab.telegram">Telegram</span></div>
+    <div class="nav" data-tab="settings"><span class="ic">⚙</span><span data-i18n="tab.settings">Settings</span></div>
     <div class="sidefoot">
       <span class="dot" id="hdot"></span><span id="hver">checking…</span>
-      <div style="margin-top:8px;color:#4b4b58">v0.0.1 · MIT</div>
+      <div style="margin-top:7px;color:var(--dim)">v0.0.1 · MIT</div>
     </div>
   </aside>
 
   <div class="main">
     <header class="top">
-      <div><h1 id="ttl">Dashboard</h1><div class="sub" id="sub">one endpoint, many upstreams</div></div>
+      <div><h1 id="ttl">Dashboard</h1><div class="sub" id="sub" data-i18n="sub.overview">one endpoint, many upstreams</div></div>
       <div class="grow"></div>
-      <button class="btn" id="sync">⟳ Sync providers</button>
-      <button class="btn pri" id="newkey">+ New key</button>
+      <div class="switch" id="lang">
+        <button data-lang="en" class="on">EN</button><button data-lang="fa">فا</button>
+      </div>
+      <div class="switch" id="theme">
+        <button data-theme="night" class="on">🌙</button><button data-theme="day">☀</button>
+        <button data-theme="forest">🌲</button><button data-theme="sunset">🌇</button><button data-theme="royal">💠</button>
+      </div>
+      <button class="btn" id="sync">⟳ <span data-i18n="btn.sync">Sync</span></button>
     </header>
     <div class="content" id="content"></div>
   </div>
@@ -162,19 +244,57 @@
 <div class="toast" id="toast"></div>
 
 <script>
-/* ============================ shell ============================ */
+/* ============================ helpers ============================ */
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
-const esc=(s)=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const noKey=(p)=>p&&(p.auth==="none"||(p.auth&&p.auth.type==="none"));
-const TABS={overview:"Dashboard",console:"Console",providers:"Providers",connections:"Connections",
-  models:"Models",keys:"API keys",keypool:"Key pool",usage:"Usage",logs:"Logs",settings:"Settings"};
+const esc=(s)=>String(s??"").replace(/[&<>"' ]/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&quot;"," ":"&nbsp;"}[c]||c));
+const noKey=(p)=>!!p&&(p.auth==="none"||(p.auth&&p.auth.type==="none"));
+/* ============================ i18n ============================ */
+const I18N = {
+  en:{ "tagline":"personal AI gateway","nav.overview":"Overview","nav.routing":"Routing","nav.access":"Access",
+    "nav.observe":"Observability","tab.overview":"Dashboard","tab.console":"Console","tab.combos":"Combos",
+    "tab.providers":"Providers","tab.connections":"Connections","tab.models":"Models","tab.keys":"API keys",
+    "tab.keypool":"Key pool","tab.health":"Health","tab.usage":"Usage","tab.logs":"Logs","tab.settings":"Settings",
+    "btn.sync":"Sync","sub.overview":"one endpoint, many upstreams",
+    "tab.sessions":"Sessions","tab.backups":"Backups","tab.telegram":"Telegram" },
+  fa:{ "tagline":"دروازه شخصی هوش مصنوعی","nav.overview":"نمای کلی","nav.routing":"مسیریابی","nav.access":"دسترسی",
+    "nav.observe":"پایش","tab.overview":"داشبورد","tab.console":"کنسول","tab.combos":"ترکیب‌ها",
+    "tab.providers":"ارائه‌دهنده‌ها","tab.connections":"اتصال‌ها","tab.models":"مدل‌ها","tab.keys":"کلیدها",
+    "tab.keypool":"مخزن کلید","tab.health":"سلامت","tab.usage":"مصرف","tab.logs":"گزارش‌ها","tab.settings":"تنظیمات",
+    "btn.sync":"همگام‌سازی","sub.overview":"یک آدرس، چند ارائه‌دهنده",
+    "tab.sessions":"نشست‌ها","tab.backups":"پشتیبان‌ها","tab.telegram":"ربات تلگرام" }
+};
+let LANG = localStorage.getItem("magoco.lang") || "en";
+function applyLang(){
+  document.documentElement.lang = LANG;
+  document.documentElement.dir = LANG === "fa" ? "rtl" : "ltr";
+  const dict = I18N[LANG] || I18N.en;
+  document.querySelectorAll("[data-i18n]").forEach(el=>{ const k=el.dataset.i18n; if(dict[k]) el.textContent = dict[k]; });
+  $$("#lang button").forEach(b=>b.classList.toggle("on", b.dataset.lang===LANG));
+  localStorage.setItem("magoco.lang", LANG);
+}
+$$("#lang button").forEach(b=>b.onclick=()=>{ LANG=b.dataset.lang; applyLang(); render(); });
+
+/* ============================ theme ============================ */
+const THEMES=["night","day","forest","sunset","royal"];
+function setTheme(t){
+  document.documentElement.dataset.theme = t;
+  $$("#theme button").forEach(b=>b.classList.toggle("on", b.dataset.theme===t));
+  localStorage.setItem("magoco.theme", t);
+}
+$$("#theme button").forEach(b=>b.onclick=()=>setTheme(b.dataset.theme));
+setTheme(localStorage.getItem("magoco.theme") || "night");
+
+const TABS={overview:"Dashboard",console:"Console",combos:"Combos",providers:"Providers",connections:"Connections",
+  models:"Models",keys:"API keys",keypool:"Key pool",health:"Health",usage:"Usage",logs:"Logs",sessions:"Sessions",backups:"Backups",telegram:"Telegram",settings:"Settings"};
+const TABT={overview:"tab.overview",console:"tab.console",combos:"tab.combos",providers:"tab.providers",
+  connections:"tab.connections",models:"tab.models",keys:"tab.keys",keypool:"tab.keypool",health:"tab.health",
+  usage:"tab.usage",logs:"tab.logs",sessions:"tab.sessions",backups:"tab.backups",telegram:"tab.telegram",settings:"tab.settings"};
 let TAB="overview";
-let REG=[], CONN=[], KEYS=[], MODELS=[], POOL=[];
+let REG=[], CONN=[], KEYS=[], MODELS=[], POOL=[], COMBOS=[], STRATS=[];
 
-function toast(m,err){const t=$("#toast");t.innerHTML=m;t.style.display="block";
-  t.style.borderColor=err?"#4a2027":"#2a3550";setTimeout(()=>t.style.display="none",3200);}
-
+function toast(m,err){const t=$("#toast");t.textContent=m;t.style.display="block";
+  t.style.borderColor=err?"color-mix(in srgb,var(--err) 45%,transparent)":"var(--line2)";setTimeout(()=>t.style.display="none",3400);}
 async function api(p,o={}){
   const r=await fetch(p,{credentials:"same-origin",...o});
   let d=null; try{d=await r.json()}catch{}
@@ -182,30 +302,37 @@ async function api(p,o={}){
   return d;
 }
 const jpost=(p,b)=>api(p,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(b||{})});
+const jpatch=(p,b)=>api(p,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify(b||{})});
+const fa=(k)=>(I18N[LANG]||{})[k]||I18N.en[k]||k;
 
-function show(panel){$("#content").innerHTML=panel;$("#ttl").textContent=TABS[TAB];
-  $$(".nav").forEach(n=>n.classList.toggle("on",n.dataset.tab===TAB));}
+function show(html){ $("#content").innerHTML=html;
+  const t=fa(TABT[TAB])||TABS[TAB]; $("#ttl").textContent=t;
+  $$(".nav").forEach(n=>n.classList.toggle("on",n.dataset.tab===TAB));
+}
 $$(".nav").forEach(n=>n.onclick=()=>{TAB=n.dataset.tab;render();});
 
-/* ============================ data ============================ */
 async function loadAll(){
-  try{const h=await api("/api/health");$("#hver").textContent=h.name+" "+h.version;$("#hdot").className="dot";}catch{$("#hdot").className="dot bad";$("#hver").textContent="offline";}
-  try{const s=await api("/api/auth/status");if(!s.authenticated){return login();}}catch{return login();}
+  try{const h=await api("/api/health");$("#hver").textContent=`${h.name} ${h.version}`;$("#hdot").className="dot";}
+  catch{$("#hdot").className="dot bad";$("#hver").textContent="offline";}
+  try{const s=await api("/api/auth/status");if(!s.authenticated)return login();}catch{return login();}
   try{REG=(await api("/api/providers/registry")).providers||[];}catch{}
   try{CONN=(await api("/api/providers")).connections||[];}catch{}
   try{KEYS=(await api("/api/keys")).keys||[];}catch{}
-  $("#b-prov").textContent=REG.length;$("#b-conn").textContent=CONN.length;$("#b-keys").textContent=KEYS.length;
-  try{const p=await api("/api/keypool");POOL=p.keys||[];$("#b-pool").textContent=POOL.length;}catch{}
-  try{const m=await api("/v1/models?x=1").catch(()=>({data:[]}));}catch{}
+  try{const p=await api("/api/keypool");POOL=p.keys||[];}catch{}
+  try{COMBOS=(await api("/api/combos")).combos||[];}catch{}
+  try{STRATS=(await api("/api/strategies")).strategies||[];}catch{}
+  $("#b-prov").textContent=REG.length;$("#b-conn").textContent=CONN.length;
+  $("#b-keys").textContent=KEYS.length;$("#b-pool").textContent=POOL.length;$("#b-combo").textContent=COMBOS.length;
   render();
 }
 
 function login(){
   $("#content").innerHTML=`<div class="card login">
-    <h3>Sign in</h3><p class="hint">Enter the dashboard password to manage the router.</p>
+    <h3>${fa("tab.settings")==="تنظیمات"?"ورود":"Sign in"}</h3>
+    <p class="hint">${fa("tab.settings")==="تنظیمات"?"برای مدیریت روتر وارد شوید":"Enter the dashboard password to manage the router."}</p>
     <input id="pw" type="password" placeholder="Password" autocomplete="current-password" />
     <div class="msg err hide" id="err"></div>
-    <div class="row" style="margin-top:14px;margin-bottom:0"><button class="btn pri" id="lb">Sign in</button></div></div>`;
+    <div class="row" style="margin-top:14px;margin-bottom:0"><button class="btn pri" id="lb">${fa("tab.settings")==="تنظیمات"?"ورود":"Sign in"}</button></div></div>`;
   $("#lb").onclick=async()=>{
     try{await jpost("/api/auth/login",{password:$("#pw").value});$("#pw").value="";loadAll();}
     catch(e){$("#err").textContent=e.message;$("#err").classList.remove("hide");}
@@ -216,11 +343,16 @@ function login(){
 function render(){
   if(TAB==="overview")return vOverview();
   if(TAB==="console")return vConsole();
+  if(TAB==="combos")return vCombos();
   if(TAB==="providers")return vProviders();
   if(TAB==="connections")return vConnections();
   if(TAB==="models")return vModels();
   if(TAB==="keys")return vKeys();
   if(TAB==="keypool")return vKeyPool();
+  if(TAB==="health")return vHealth();
+  if(TAB==="sessions")return vSessions();
+  if(TAB==="backups")return vBackups();
+  if(TAB==="telegram")return vTelegram();
   if(TAB==="usage")return vUsage();
   if(TAB==="logs")return vLogs();
   if(TAB==="settings")return vSettings();
@@ -229,36 +361,43 @@ function render(){
 async function vOverview(){
   const free=REG.filter(p=>p.group==="free"&&noKey(p));
   show(`<div class="grid" style="margin-bottom:16px">
-    <div class="stat"><div class="k">Calls (24h)</div><div class="v" id="s-calls">–</div><div class="s">routed through this gateway</div></div>
+    <div class="stat"><div class="k">Calls (24h)</div><div class="v" id="s-calls">–</div><div class="s">routed through this gateway</div><div class="spark" id="s-spark"></div></div>
     <div class="stat"><div class="k">Tokens (24h)</div><div class="v" id="s-tok">–</div><div class="s">prompt + completion</div></div>
     <div class="stat"><div class="k">Keyless providers</div><div class="v">${free.length}</div><div class="s">ready with no setup</div></div>
     <div class="stat"><div class="k">Models available</div><div class="v" id="s-mod">–</div><div class="s">synced catalogues</div></div>
   </div>
   <div class="split">
     <div class="card">
-      <h3>Ready to use right now</h3>
-      <p class="hint">These providers answer without a key and without an account.</p>
+      <h3>${fa("tab.providers")==="ارائه‌دهنده‌ها"?"آمادهٔ استفادهٔ فوری":"Ready to use right now"}</h3>
+      <p class="hint">${fa("tab.providers")==="ارائه‌دهنده‌ها"?"این ارائه‌دهنده‌ها بدون کلید و بدون حساب پاسخ می‌دهند.":"These providers answer without a key and without an account."}</p>
       <div class="provs" id="freep"></div>
     </div>
     <div class="card">
-      <h3>Your gateway</h3>
+      <h3>${fa("tab.connections")==="اتصال‌ها"?"دروازهٔ شما":"Your gateway"}</h3>
       <p class="hint">Point any OpenAI or Anthropic client here.</p>
       <label>Base URL</label>
       <div class="key" style="padding:9px 11px;border-radius:10px" id="base">${location.origin}/v1</div>
       <label style="margin-top:14px">Example</label>
-      <pre class="key" style="padding:11px;border-radius:10px;white-space:pre-wrap;color:#a9d5ff">curl ${location.origin}/v1/chat/completions \\
-  -H "x-9router-key: &lt;your key&gt;" \\
+      <pre class="key" style="padding:11px;border-radius:10px;white-space:pre-wrap;color:var(--accent2)">curl ${location.origin}/v1/chat/completions \\
+  -H "x-magoco-key: &lt;your key&gt;" \\
   -H "content-type: application/json" \\
   -d '{"model":"beam-free","messages":[{"role":"user","content":"hi"}]}'</pre>
+      ${COMBOS.length?`<label style="margin-top:14px">Combos</label>${COMBOS.map(c=>`<div class="key" style="padding:6px 10px;border-radius:8px;margin-bottom:5px">${esc(c.name)} <span style="color:var(--dim)">· ${esc(c.strategy||"priority")} · ${(c.members||[]).length}</span></div>`).join("")}`:""}
     </div>
   </div>`);
-  api("/api/usage/summary").then(s=>{
-    $("#s-calls").textContent=s.calls??"–";$("#s-tok").textContent=((s.promptTokens??0)+(s.outputTokens??0)).toLocaleString();
+  api("/api/health/metrics").then(s=>{
+    $("#s-calls").textContent=s.calls??"–";
+    $("#s-tok").textContent=((s.providers||[]).reduce((a,p)=>a+(p.promptTokens||0)+(p.outputTokens||0),0)).toLocaleString();
     $("#s-mod").textContent=REG.reduce((a,p)=>a+(p.modelCount||0),0);
+  }).catch(()=>{});
+  api("/api/usage/stats").then(d=>{
+    const rows=(d.rows||[]).slice(0,24);
+    const max=Math.max(1,...rows.map(r=>r.calls));
+    $("#s-spark").innerHTML=rows.map(r=>`<i style="height:${Math.max(6,Math.round(r.calls/max*100))}%"></i>`).join("");
   }).catch(()=>{});
   $("#freep").innerHTML=free.map(p=>`<div class="prov">
       <div class="hd"><b>${esc(p.label)}</b><span class="tag free">free · no key</span></div>
-      <div class="mt">${p.modelCount||0} models synced · ${esc(p.note||"")}</div>
+      <div class="mt">${p.modelCount||0} models synced</div>
       <div class="ft"><button class="btn sm" data-console="${esc(p.id)}">Try a model</button></div>
     </div>`).join("")||'<p class="hint">none</p>';
   $$("#freep [data-console]").forEach(b=>b.onclick=()=>{TAB="console";render();});
@@ -266,7 +405,8 @@ async function vOverview(){
 
 async function vConsole(){
   show(`<div class="card">
-    <h3>Console</h3><p class="hint">Send a request through the router with your session. No API key needed here.</p>
+    <h3>${fa("tab.console")==="کنسول"?"کنسول":"Console"}</h3>
+    <p class="hint">Send a request through the router with your session. No API key needed here.</p>
     <div class="row">
       <div style="flex:2"><label>Model</label><input id="c-model" list="mlist" placeholder="beam-free" /></div>
       <div><label>Stream</label><select id="c-stream"><option value="0">no</option><option value="1">yes</option></select></div>
@@ -274,40 +414,76 @@ async function vConsole(){
     </div>
     <datalist id="mlist">${MODELS.map(m=>`<option value="${esc(m.id)}">`).join("")}</datalist>
     <label>Message</label><textarea id="c-msg">Reply with exactly: MAGoCo works</textarea>
-    <div class="chat" id="c-out" style="margin-top:12px"><span class="muted">the answer shows up here</span></div>
+    <div class="chat" id="c-out" style="margin-top:12px"><span style="color:var(--dim)">the answer shows up here</span></div>
   </div>`);
   $("#c-send").onclick=async()=>{
-    const out=$("#c-out");out.innerHTML='<span class="muted">thinking…</span>';
+    const out=$("#c-out");
+    out.innerHTML='<div class="m u">'+esc($("#c-msg").value)+'</div><div class="m a" id="c-ans">…</div>';
     const t0=Date.now();
     try{
       const r=await jpost("/api/console",{model:$("#c-model").value,messages:[{role:"user",content:$("#c-msg").value}],stream:false});
       const txt=r.choices?.[0]?.message?.content||JSON.stringify(r).slice(0,400);
-      out.innerHTML=`<div class="m u">${esc($("#c-msg").value)}</div><div class="m a">${esc(txt)}</div>
-        <div class="muted" style="font-size:11px">${Date.now()-t0}ms · ${esc(r.model||"")}</div>`;
-    }catch(e){out.innerHTML=`<div class="msg err">${esc(e.message)}</div>`;}
+      $("#c-ans").textContent=txt;
+      const meta=document.createElement("div");
+      meta.style.cssText="font-size:11px;color:var(--dim)";
+      meta.textContent=`${Date.now()-t0}ms · ${r.model||""}${r._cached?" · cached":""}`;
+      out.appendChild(meta);
+    }catch(e){$("#c-ans").textContent=e.message;}
+  };
+}
+
+async function vCombos(){
+  show(`<div class="card">
+    <h3>${fa("tab.combos")==="ترکیب‌ها"?"ترکیب‌ها":"Combos"}</h3>
+    <p class="hint">A named fallback chain. Use the combo name as the model and the router walks the list.</p>
+    <div class="row">
+      <div><label>Name</label><input id="c-name" placeholder="free" /></div>
+      <div style="flex:2"><label>Members (one target per line)</label><input id="c-members" placeholder="opencode/beam-free" /></div>
+      <div><label>Strategy</label><select id="c-strategy">${STRATS.map(s=>`<option value="${esc(s.id)}">${esc(s.label)}</option>`).join("")}</select></div>
+      <div style="flex:0"><button class="btn pri" id="c-add">Create</button></div>
+    </div>
+    <table><thead><tr><th>Name</th><th>Members</th><th>Strategy</th><th></th></tr></thead><tbody id="c-rows"></tbody></table>
+  </div>`);
+  const draw=()=>{
+    $("#c-rows").innerHTML=COMBOS.length?COMBOS.map(c=>`<tr>
+      <td><b>${esc(c.name)}</b><div style="color:var(--dim);font-size:11px">${esc(c.description||"")}</div></td>
+      <td class="mono" style="color:var(--muted)">${(c.members||[]).map(esc).join("<br>")}</td>
+      <td><span class="tag">${esc(c.strategy||"priority")}</span></td>
+      <td style="text-align:end"><button class="btn sm" data-try="${esc(c.name)}">try</button>
+        <button class="btn sm danger" data-del="${esc(c.id)}">delete</button></td></tr>`).join("")
+      :'<tr><td colspan="4" style="color:var(--dim)">No combos yet.</td></tr>';
+    $$("#c-rows [data-del]").forEach(b=>b.onclick=async()=>{await api(`/api/combos/${b.dataset.del}`,{method:"DELETE"});loadAll();});
+    $$("#c-rows [data-try]").forEach(b=>b.onclick=()=>{TAB="console";render();setTimeout(()=>{const i=$("#c-model");if(i)i.value=b.dataset.try;},50);});
+  };
+  draw();
+  $("#c-add").onclick=async()=>{
+    const members=$("#c-members").value.split(/[\n,]/).map(s=>s.trim()).filter(Boolean);
+    try{
+      await jpost("/api/combos",{name:$("#c-name").value,members,strategy:$("#c-strategy").value});
+      toast("combo created");loadAll();
+    }catch(e){toast(e.message,true);}
   };
 }
 
 async function vProviders(){
   const groups={free:"Free · no key",paid:"Key required",local:"Local"};
-  show(`<div class="card"><h3>Provider registry</h3>
-    <p class="hint">Definitions and model catalogues are synced from the registry. Click a provider to connect it with your own key.</p>
+  show(`<div class="card"><h3>${fa("tab.providers")==="ارائه‌دهنده‌ها"?"ارائه‌دهنده‌ها":"Provider registry"}</h3>
+    <p class="hint">Definitions and model catalogues sync themselves. Click a provider to connect it with your own key.</p>
     <div id="provs"></div></div>`);
   const box=$("#provs");
   for(const [g,label] of Object.entries(groups)){
     const list=REG.filter(p=>p.group===g||(p.group==="freeTier"&&g==="paid"));
     if(!list.length)continue;
-    box.insertAdjacentHTML("beforeend",`<div class="navlbl" style="padding:14px 0 8px">${label}</div>`);
+    box.insertAdjacentHTML("beforeend",`<div class="sect">${label}</div>`);
     box.insertAdjacentHTML("beforeend",`<div class="provs">${list.map(p=>`
       <div class="prov">
         <div class="hd"><b>${esc(p.label)}</b>
           <span class="tag ${noKey(p)?"free":g==="local"?"local":"paid"}">${noKey(p)?"no key":esc(p.auth?.type||p.auth||"")}</span></div>
         <div class="mt">${p.modelCount||0} models · <span class="mono">${esc(p.baseUrl||"")}</span></div>
-        ${p.note?`<div class="mt" style="margin-top:6px;color:#6f6f80">${esc(p.note)}</div>`:""}
+        ${p.note?`<div class="mt" style="margin-top:5px;color:var(--dim)">${esc(p.note)}</div>`:""}
         <div class="ft">
           ${noKey(p)?"":`<button class="btn sm" data-connect="${esc(p.id)}">Connect</button>`}
-          ${p.docs?`<a class="btn sm" href="${esc(p.docs)}" target="_blank" rel="noopener">Docs</a>`:""}
-          ${p.modelsUrl?`<span class="tag">${p.syncedAt?"synced":"pending"}</span>`:""}
+          ${p.docs?`<a class="btn sm ghost" href="${esc(p.docs)}" target="_blank" rel="noopener">Docs</a>`:""}
         </div>
       </div>`).join("")}</div>`);
   }
@@ -317,7 +493,7 @@ async function vProviders(){
 function connectDialog(id){
   const p=REG.find(x=>x.id===id);if(!p)return;
   show(`<div class="card">
-    <h3>Connect ${esc(p.label)}</h3><p class="hint">${esc(p.baseUrl||"")} · ${esc(p.auth?.type||"")} auth</p>
+    <h3>Connect ${esc(p.label)}</h3><p class="hint">${esc(p.baseUrl||"")} · ${esc(p.auth?.type||p.auth||"")} auth</p>
     <div class="row">
       <div><label>Label</label><input id="c-name" value="${esc(p.label)}" /></div>
       <div style="flex:2"><label>Base URL</label><input id="c-base" value="${esc(p.baseUrl||"")}" /></div>
@@ -338,7 +514,8 @@ function connectDialog(id){
 }
 
 async function vConnections(){
-  show(`<div class="card"><h3>Connections</h3><p class="hint">Your own upstreams. They are tried in priority order, then the next one on failure.</p>
+  show(`<div class="card"><h3>${fa("tab.connections")==="اتصال‌ها"?"اتصال‌ها":"Connections"}</h3>
+    <p class="hint">Your own upstreams. They are tried in priority order, then the next one on failure.</p>
     <div class="row">
       <div><label>Provider</label><select id="n-prov">${REG.map(p=>`<option value="${esc(p.id)}">${esc(p.label)}</option>`).join("")}</select></div>
       <div><label>Label</label><input id="n-name" placeholder="my openai" /></div>
@@ -351,9 +528,9 @@ async function vConnections(){
   const rows=CONN.filter(c=>!c.registry);
   $("#c-rows").innerHTML=rows.length?rows.map(c=>`<tr>
       <td>${esc(c.provider)}</td><td>${esc(c.name)}</td>
-      <td class="mono" style="color:#8a8a99">${esc(c.baseUrl)}</td><td>${c.priority}</td>
-      <td style="text-align:right"><button class="btn sm danger" data-del="${esc(c.id)}">remove</button></td></tr>`).join("")
-    :'<tr><td colspan="5" class="muted">No connections yet.</td></tr>';
+      <td class="mono" style="color:var(--muted)">${esc(c.baseUrl)}</td><td>${c.priority}</td>
+      <td style="text-align:end"><button class="btn sm danger" data-del="${esc(c.id)}">remove</button></td></tr>`).join("")
+    :'<tr><td colspan="5" style="color:var(--dim)">No connections yet.</td></tr>';
   $$("#c-rows [data-del]").forEach(b=>b.onclick=async()=>{
     await api(`/api/providers/${b.dataset.del}`,{method:"DELETE"});loadAll();});
   $("#n-add").onclick=async()=>{
@@ -367,11 +544,12 @@ async function vConnections(){
 }
 
 async function vModels(){
-  show(`<div class="card"><h3>Models</h3><p class="hint">Every model the router can serve right now.</p>
+  show(`<div class="card"><h3>${fa("tab.models")==="مدل‌ها"?"مدل‌ها":"Models"}</h3>
+    <p class="hint">Every model the router can serve right now.</p>
     <div class="row"><div><label>Filter</label><input id="m-q" placeholder="search…" /></div></div>
     <div id="m-list" class="provs"></div></div>`);
   const all=[];
-  for(const p of REG) for(const m of (p.models||[])) all.push({id:`${p.id}/${m}`,raw:m,prov:p.label,free:noKey(p)});
+  for(const p of REG) for(const m of (p.models||[])) all.push({id:`${p.id}/${m}`,prov:p.label,free:noKey(p)});
   MODELS=all;
   const draw=()=>{
     const q=$("#m-q").value.toLowerCase();
@@ -381,21 +559,22 @@ async function vModels(){
       <div class="mt">${esc(m.prov)}</div>
       <div class="ft"><button class="btn sm" data-try="${esc(m.id)}">Try</button></div></div>`).join("")
       ||'<p class="hint">nothing matches</p>';
-    $$("#m-list [data-try]").forEach(b=>b.onclick=()=>{TAB="console";render();$("#c-model")&&($("#c-model").value=b.dataset.try);});
+    $$("#m-list [data-try]").forEach(b=>b.onclick=()=>{TAB="console";render();setTimeout(()=>{const i=$("#c-model");if(i)i.value=b.dataset.try;},50);});
   };
   draw();$("#m-q").oninput=draw;
 }
 
 async function vKeys(){
-  show(`<div class="card"><h3>Client API keys</h3><p class="hint">What your clients send. Keep them private.</p>
+  show(`<div class="card"><h3>${fa("tab.keys")==="کلیدها"?"کلیدهای کلاینت":"Client API keys"}</h3>
+    <p class="hint">What your clients send. Keep them private.</p>
     <div class="row"><div><label>Label</label><input id="k-name" placeholder="claude-code" /></div>
       <div style="flex:0"><button class="btn pri" id="k-add">Create</button></div></div>
     <table><thead><tr><th>Label</th><th>Key</th><th>Created</th><th></th></tr></thead><tbody id="k-rows"></tbody></table></div>`);
   $("#k-rows").innerHTML=KEYS.length?KEYS.map(k=>`<tr>
       <td>${esc(k.name||"—")}</td><td><span class="key">${esc(k.key)}</span></td>
-      <td class="muted">${esc((k.createdAt||"").slice(0,19).replace("T"," "))}</td>
-      <td style="text-align:right"><button class="btn sm danger" data-del="${esc(k.id)}">delete</button></td></tr>`).join("")
-    :'<tr><td colspan="4" class="muted">No keys yet.</td></tr>';
+      <td style="color:var(--muted)">${esc((k.createdAt||"").slice(0,19).replace("T"," "))}</td>
+      <td style="text-align:end"><button class="btn sm danger" data-del="${esc(k.id)}">delete</button></td></tr>`).join("")
+    :'<tr><td colspan="4" style="color:var(--dim)">No keys yet.</td></tr>';
   $$("#k-rows [data-del]").forEach(b=>b.onclick=async()=>{
     await api(`/api/keys/${b.dataset.del}`,{method:"DELETE"});loadAll();});
   $("#k-add").onclick=async()=>{
@@ -406,8 +585,8 @@ async function vKeys(){
 
 async function vKeyPool(){
   show(`<div class="card">
-    <h3>Key pool</h3>
-    <p class="hint">A rotating set of credentials per provider. The router validates each key, uses the healthy ones, rotates to the next when one is rejected, and quarantines the dead ones. Keys are stored sealed and are never shown in full.</p>
+    <h3>${fa("tab.keypool")==="مخزن کلید"?"مخزن کلید":"Key pool"}</h3>
+    <p class="hint">A rotating set of credentials per provider. The router validates each key, uses the healthy ones, rotates to the next when one is rejected, and quarantines the dead ones.</p>
     <div class="split">
       <div>
         <label>Paste keys</label>
@@ -419,12 +598,10 @@ async function vKeyPool(){
       </div>
       <div>
         <label>Key source</label>
-        <input id="p-url" placeholder="https://... a file that publishes free-tier keys" />
-        <div class="row" style="margin-top:12px">
-          <div style="flex:0"><button class="btn" id="p-src">Sync source</button></div>
-        </div>
+        <input id="p-url" placeholder="https://... a file that publishes keys" />
+        <div class="row" style="margin-top:12px"><div style="flex:0"><button class="btn" id="p-src">Sync source</button></div></div>
         <label style="margin-top:4px">Sources</label>
-        <div id="p-sources" class="muted" style="font-size:12px">none</div>
+        <div id="p-sources" style="font-size:12px;color:var(--muted)">none</div>
       </div>
     </div>
   </div>
@@ -435,7 +612,6 @@ async function vKeyPool(){
     <table><thead><tr><th>Provider</th><th>Key</th><th>Status</th><th>Uses</th><th>Detail</th><th></th></tr></thead>
     <tbody id="p-rows"></tbody></table>
   </div>`);
-
   const draw=()=>{
     $("#p-rows").innerHTML=POOL.length?POOL.map(k=>{
       const st=k.status==="working"?"ok":k.status==="dead"?"err":"";
@@ -443,34 +619,30 @@ async function vKeyPool(){
         <td>${esc(k.provider)}</td>
         <td class="mono">${esc(k.key)}</td>
         <td><span class="tag ${st}">${esc(k.status)}</span></td>
-        <td>${k.uses} <span class="muted">/ ${k.failures} fail</span></td>
-        <td class="muted">${esc(k.statusText||"")}</td>
-        <td style="text-align:right">
+        <td>${k.uses} <span style="color:var(--dim)">/ ${k.failures} fail</span></td>
+        <td style="color:var(--muted)">${esc(k.statusText||"")}</td>
+        <td style="text-align:end">
           <button class="btn sm" data-check="${esc(k.id)}">check</button>
           <button class="btn sm danger" data-del="${esc(k.id)}">remove</button>
         </td></tr>`;
-    }).join(""):'<tr><td colspan="6" class="muted">The pool is empty. Paste a key or add a source above.</td></tr>';
-    $("#p-rows [data-del]").forEach(b=>b.onclick=async()=>{await api(`/api/keypool/${b.dataset.del}`,{method:"DELETE"});loadAll();});
-    $("#p-rows [data-check]").forEach(b=>b.onclick=async()=>{
+    }).join(""):'<tr><td colspan="6" style="color:var(--dim)">The pool is empty. Paste a key or add a source above.</td></tr>';
+    $$("#p-rows [data-del]").forEach(b=>b.onclick=async()=>{await api(`/api/keypool/${b.dataset.del}`,{method:"DELETE"});loadAll();});
+    $$("#p-rows [data-check]").forEach(b=>b.onclick=async()=>{
       b.textContent="…";
-      const r=await jpost("/api/keypool/validate",{id:b.dataset.check}).catch(e=>({error:e.message}));
-      if(r.error) toast(r.error,true);
+      await jpost("/api/keypool/validate",{id:b.dataset.check}).catch(e=>toast(e.message,true));
       loadAll();
     });
   };
   draw();
-
   $("#p-import").onclick=async()=>{
     const text=$("#p-text").value;
     if(!text.trim())return toast("nothing to add",true);
     try{
       const r=await jpost("/api/keypool/import",{text,provider:$("#p-prov").value});
       toast(`added ${r.added.length} key(s), skipped ${r.skipped.length}`);
-      $("#p-text").value="";
-      loadAll();
+      $("#p-text").value="";loadAll();
     }catch(e){toast(e.message,true);}
   };
-
   $("#p-src").onclick=async()=>{
     const url=$("#p-url").value.trim();
     if(!url)return toast("no url",true);
@@ -478,12 +650,10 @@ async function vKeyPool(){
     try{
       const r=await jpost("/api/keypool/source",{url,provider:$("#p-prov").value});
       toast(`source synced: ${r.added.length} new key(s)`);
-      $("#p-url").value="";
-      loadAll();
+      $("#p-url").value="";loadAll();
     }catch(e){toast(e.message,true);}
     b.disabled=false;b.textContent="Sync source";
   };
-
   $("#p-validate").onclick=async()=>{
     const b=$("#p-validate");b.disabled=true;b.textContent="validating…";
     try{
@@ -491,66 +661,260 @@ async function vKeyPool(){
       const dead=(r.results||[]).filter(x=>x.status==="dead").length;
       toast(`checked ${(r.results||[]).length} key(s), ${dead} dead`);
     }catch(e){toast(e.message,true);}
-    b.disabled=false;b.textContent="Validate all";
-    loadAll();
+    b.disabled=false;b.textContent="Validate all";loadAll();
   };
 }
 
+async function vHealth(){
+  show(`<div class="card"><h3>${fa("tab.health")==="سلامت"?"سلامت":"Health"}</h3>
+    <p class="hint">Uptime, latency, circuit breakers and model lockouts.</p>
+    <div class="grid" style="margin-bottom:16px">
+      <div class="stat"><div class="k">Uptime (24h)</div><div class="v" id="h-up">–</div><div class="s">successful requests</div></div>
+      <div class="stat"><div class="k">p95 latency</div><div class="v" id="h-p95">–</div><div class="s">milliseconds</div></div>
+      <div class="stat"><div class="k">Calls</div><div class="v" id="h-calls">–</div><div class="s">last 24 hours</div></div>
+      <div class="stat"><div class="k">Open breakers</div><div class="v" id="h-brk">–</div><div class="s">providers paused</div></div>
+    </div>
+    <div class="split">
+      <div class="card"><h3>Providers</h3><table><thead><tr><th>Provider</th><th>Calls</th><th>Errors</th><th>Cost</th></tr></thead><tbody id="h-prov"></tbody></table></div>
+      <div class="card"><h3>Breakers &amp; lockouts</h3><table><thead><tr><th>Key</th><th>State</th><th>Failures</th></tr></thead><tbody id="h-brkrows"></tbody></table>
+        <div style="margin-top:12px"><button class="btn sm" id="h-reset">Reset all</button></div></div>
+    </div></div>`);
+  const s=await api("/api/health/metrics").catch(()=>null);
+  if(!s)return;
+  $("#h-up").textContent=(s.uptime*100).toFixed(1)+"%";
+  $("#h-p95").textContent=s.latency?.p95??"–";
+  $("#h-calls").textContent=s.calls??"–";
+  $("#h-brk").textContent=(s.breakers||[]).filter(b=>b.state!=="closed").length;
+  $("#h-prov").innerHTML=(s.providers||[]).length?s.providers.map(p=>`<tr>
+      <td>${esc(p.provider)}</td><td>${p.calls}</td>
+      <td>${p.errors}</td><td>${p.cost?("$"+p.cost):"–"}</td></tr>`).join("")
+    :'<tr><td colspan="4" style="color:var(--dim)">no traffic yet</td></tr>';
+  const rows=[...(s.breakers||[]).map(b=>[b.key,b.state,b.failures]),...(s.lockouts||[]).map(l=>[l.model,"locked","-"])];
+  $("#h-brkrows").innerHTML=rows.length?rows.map(r=>`<tr><td class="mono">${esc(r[0])}</td>
+      <td><span class="tag ${r[1]==="closed"?"ok":"err"}">${esc(r[1])}</span></td><td>${r[2]}</td></tr>`).join("")
+    :'<tr><td colspan="3" style="color:var(--dim)">everything is healthy</td></tr>';
+  $("#h-reset").onclick=async()=>{await jpost("/api/breaker/reset",{});vHealth();};
+}
+
+async function vBackups(){
+  show(`<div class="card">
+    <h3>${fa("tab.backups")==="پشتیبان‌ها"?"پشتیبان‌ها":"Backups"}</h3>
+    <p class="hint">A snapshot of the whole database. Restoring swaps the tables back without a restart.</p>
+    <div class="row">
+      <div><label>Label</label><input id="b-label" placeholder="before the change" /></div>
+      <div style="flex:0"><button class="btn pri" id="b-take">Take a backup</button></div>
+    </div>
+    <table><thead><tr><th>Created</th><th>Label</th><th>Size</th><th></th></tr></thead><tbody id="b-rows"></tbody></table>
+  </div>`);
+  const draw=async()=>{
+    const d=await api("/api/backups").catch(()=>({backups:[]}));
+    $("#b-rows").innerHTML=(d.backups||[]).length?d.backups.map(b=>`<tr>
+      <td>${esc((b.createdAt||"").slice(0,19).replace("T"," "))}</td>
+      <td>${esc(b.label||"—")}</td>
+      <td>${Math.round((b.size||0)/1024)} KB</td>
+      <td style="text-align:end">
+        <a class="btn sm ghost" href="/api/backups/${encodeURIComponent(b.id)}/download">download</a>
+        <button class="btn sm" data-restore="${esc(b.id)}">restore</button>
+        <button class="btn sm danger" data-del="${esc(b.id)}">delete</button>
+      </td></tr>`).join("")
+      :'<tr><td colspan="4" style="color:var(--dim)">No backups yet.</td></tr>';
+    $$("#b-rows [data-restore]").forEach(x=>x.onclick=async()=>{
+      if(!confirm("Restore this backup? The current data is replaced."))return;
+      const r=await jpost(`/api/backups/${encodeURIComponent(x.dataset.restore)}/restore`,{}).catch(e=>({error:e.message}));
+      toast(r.error?r.error:`restored ${r.tables} tables`,!!r.error);
+      if(!r.error)loadAll();
+    });
+    $$("#b-rows [data-del]").forEach(x=>x.onclick=async()=>{await api(`/api/backups/${encodeURIComponent(x.dataset.del)}`,{method:"DELETE"});draw();});
+  };
+  draw();
+  $("#b-take").onclick=async()=>{
+    try{const r=await jpost("/api/backups",{label:$("#b-label").value||"manual"});
+      toast(`backup ${r.id} created`);$("#b-label").value="";draw();
+    }catch(e){toast(e.message,true);}
+  };
+}
+
+async function vTelegram(){
+  const st=await api("/api/telegram").catch(()=>({enabled:false,configured:false,allowList:0}));
+  show(`<div class="card">
+    <h3>${fa("tab.telegram")==="ربات تلگرام"?"ربات تلگرام":"Telegram bot"}</h3>
+    <p class="hint">Drive the whole gateway from a chat window: status, models, chat, combos, keys, usage, health, logs, backups and settings.</p>
+    <div class="msg ${st.configured?"ok":"err"}">${st.configured
+      ? (st.enabled?"The bot is running.":"The bot is configured but stopped.")
+      : "No bot token yet. Create a bot with @BotFather and paste the token."}</div>
+    <div class="row">
+      <div style="flex:2"><label>Bot token</label><input id="tg-token" type="password" placeholder="123456:ABC-..." /></div>
+      <div style="flex:2"><label>Allowed user ids (comma separated)</label><input id="tg-users" placeholder="123456789" /></div>
+      <div style="flex:0"><button class="btn" id="tg-test">Test</button></div>
+      <div style="flex:0"><button class="btn pri" id="tg-save">Save &amp; start</button></div>
+    </div>
+    <div class="card" style="margin:0;background:var(--surface2)">
+      <h3>Commands</h3>
+      <div class="mono" style="font-size:12px;color:var(--muted);line-height:2">
+        /status · /models · /use &lt;model&gt; · /chat &lt;text&gt; · /combos · /keys<br>
+        /providers · /usage · /health · /logs · /backup · /restore &lt;id&gt; · /settings
+      </div>
+    </div>
+  </div>`);
+  $("#tg-test").onclick=async()=>{
+    const r=await jpost("/api/telegram/test",{token:$("#tg-token").value}).catch(e=>({ok:false,error:e.message}));
+    toast(r.ok?`connected as @${r.bot}`:r.error,!r.ok);
+  };
+  $("#tg-save").onclick=async()=>{
+    try{
+      await jpost("/api/telegram",{token:$("#tg-token").value,users:$("#tg-users").value,enabled:true});
+      toast("bot saved and started");vTelegram();
+    }catch(e){toast(e.message,true);}
+  };
+}
+
+async function vSessions(){
+  show(`<div class="card">
+    <h3>${fa("tab.sessions")==="نشست‌ها"?"نشست‌ها":"Sessions"}</h3>
+    <p class="hint">Every client conversation is remembered, so a model switch does not lose the thread. The handoff summary is sent to the new model automatically.</p>
+    <table><thead><tr><th>Session</th><th>Model</th><th>Provider</th><th>Updated</th><th></th></tr></thead><tbody id="s-rows"></tbody></table>
+  </div>`);
+  const d=await api("/api/sessions").catch(()=>({sessions:[]}));
+  $("#s-rows").innerHTML=(d.sessions||[]).length?d.sessions.map(s=>`<tr>
+    <td class="mono">${esc(s.id)}</td><td>${esc(s.model||"—")}</td><td>${esc(s.provider||"—")}</td>
+    <td style="color:var(--muted)">${esc((s.updatedAt||"").slice(0,19).replace("T"," "))}</td>
+    <td style="text-align:end"><button class="btn sm danger" data-del="${esc(s.id)}">forget</button></td></tr>`).join("")
+    :'<tr><td colspan="5" style="color:var(--dim)">No sessions yet. Send a request with an <span class="mono">x-magoco-session</span> header.</td></tr>';
+  $$("#s-rows [data-del]").forEach(b=>b.onclick=async()=>{await api(`/api/sessions/${encodeURIComponent(b.dataset.del)}`,{method:"DELETE"});vSessions();});
+}
+
 async function vUsage(){
-  show(`<div class="card"><h3>Usage</h3><p class="hint">Last 7 days, per upstream.</p>
-    <div class="barchart" id="u-chart"></div>
-    <table><thead><tr><th>Provider</th><th>Model</th><th>Status</th><th>Calls</th><th>Prompt</th><th>Output</th></tr></thead>
-    <tbody id="u-rows"></tbody></table></div>`);
-  const d=await api("/api/usage/stats").catch(()=>({rows:[],totals:{}}));
-  const rows=d.rows||[];const max=Math.max(1,...rows.map(r=>r.calls));
-  $("#u-chart").innerHTML=rows.slice(0,24).map(r=>`<div class="b" style="height:${Math.max(3,Math.round(r.calls/max*100))}%"><span>${r.calls}</span></div>`).join("");
-  $("#u-rows").innerHTML=rows.length?rows.map(r=>`<tr>
-      <td>${esc(r.provider||"—")}</td><td class="mono" style="color:#8a8a99">${esc(r.model||"—")}</td>
-      <td><span class="tag ${r.status>=400?"err":""}">${r.status}</span></td>
-      <td>${r.calls}</td><td>${r.promptTokens??0}</td><td>${r.outputTokens??0}</td></tr>`).join("")
-    :'<tr><td colspan="6" class="muted">No traffic yet.</td></tr>';
+  show(`<div class="card">
+    <h3>${fa("tab.usage")==="مصرف"?"مصرف":"Usage"}</h3>
+    <p class="hint">Calls, tokens, errors and cost, per provider, model and key.</p>
+    <div class="grid" style="margin-bottom:16px">
+      <div class="stat"><div class="k">Calls (7d)</div><div class="v" id="u-calls">–</div><div class="s">total requests</div></div>
+      <div class="stat"><div class="k">Tokens (7d)</div><div class="v" id="u-tokens">–</div><div class="s">prompt + completion</div></div>
+      <div class="stat"><div class="k">Errors</div><div class="v" id="u-errors">–</div><div class="s">failed requests</div></div>
+      <div class="stat"><div class="k">Success rate</div><div class="v" id="u-rate">–</div><div class="s">last 24 hours</div></div>
+    </div>
+    <div class="chart" id="u-chart"></div>
+    <div style="margin:14px 0"><a class="btn sm" href="/api/usage/export?days=30" download>Export CSV (30 days)</a></div>
+    <div class="split">
+      <div class="card" style="margin:0"><h3>By provider and model</h3>
+        <table><thead><tr><th>Provider</th><th>Model</th><th>Calls</th><th>Tokens</th></tr></thead><tbody id="u-models"></tbody></table></div>
+      <div class="card" style="margin:0"><h3>By key</h3>
+        <table><thead><tr><th>Key</th><th>Calls</th><th>Tokens</th></tr></thead><tbody id="u-keys"></tbody></table></div>
+    </div>
+  </div>`);
+  const [tl, stats, metrics2] = await Promise.all([
+    api("/api/usage/timeline?days=7").catch(()=>({timeline:[]})),
+    api("/api/usage/stats").catch(()=>({rows:[]})),
+    api("/api/health/metrics").catch(()=>({calls:0,errors:0,uptime:1})),
+  ]);
+  const rows=tl.timeline||[];
+  const max=Math.max(1,...rows.map(r=>r.calls));
+  $("#u-chart").innerHTML=rows.map(r=>`<div class="b" style="height:${Math.max(3,Math.round(r.calls/max*100))}%"><span>${r.calls}</span></div>`).join("");
+  $("#u-calls").textContent=rows.reduce((a,r)=>a+r.calls,0);
+  $("#u-tokens").textContent=rows.reduce((a,r)=>a+(r.promptTokens||0)+(r.outputTokens||0),0).toLocaleString();
+  $("#u-errors").textContent=rows.reduce((a,r)=>a+(r.errors||0),0);
+  $("#u-rate").textContent=((metrics2.uptime||1)*100).toFixed(1)+"%";
+  $("#u-models").innerHTML=(tl.byModel||[]).length?tl.byModel.map(m=>`<tr>
+      <td>${esc(m.provider||"—")}</td><td class="mono" style="color:var(--muted)">${esc(m.model||"—")}</td>
+      <td>${m.calls}</td><td>${(m.tokens||0).toLocaleString()}</td></tr>`).join("")
+    :'<tr><td colspan="4" style="color:var(--dim)">no traffic yet</td></tr>';
+  $("#u-keys").innerHTML=(tl.byKey||[]).length?tl.byKey.map(k=>`<tr>
+      <td class="mono">${esc((k.apiKeyId||"key").slice(0,14))}</td><td>${k.calls}</td><td>${(k.tokens||0).toLocaleString()}</td></tr>`).join("")
+    :'<tr><td colspan="3" style="color:var(--dim)">no traffic yet</td></tr>';
 }
 
 async function vLogs(){
-  show(`<div class="card"><h3>Request log</h3><p class="hint">The last 200 API calls.</p>
+  show(`<div class="card"><h3>${fa("tab.logs")==="گزارش‌ها"?"گزارش درخواست‌ها":"Request log"}</h3>
+    <p class="hint">The last 200 API calls.</p>
     <div style="margin-bottom:12px"><button class="btn sm danger" id="l-clear">Clear</button></div>
     <table><thead><tr><th>When</th><th>Method</th><th>Path</th><th>Status</th><th>ms</th></tr></thead><tbody id="l-rows"></tbody></table></div>`);
   const d=await api("/api/logs").catch(()=>({rows:[]}));
   $("#l-rows").innerHTML=(d.rows||[]).length?d.rows.map(r=>`<tr>
-      <td class="muted">${esc((r.ts||"").slice(11,19))}</td><td>${esc(r.method)}</td>
-      <td class="mono" style="color:#8a8a99">${esc(r.path)}</td>
+      <td style="color:var(--muted)">${esc((r.ts||"").slice(11,19))}</td><td>${esc(r.method)}</td>
+      <td class="mono" style="color:var(--muted)">${esc(r.path)}</td>
       <td><span class="tag ${r.status>=400?"err":""}">${r.status}</span></td><td>${r.durationMs??""}</td></tr>`).join("")
-    :'<tr><td colspan="5" class="muted">Nothing logged yet.</td></tr>';
+    :'<tr><td colspan="5" style="color:var(--dim)">Nothing logged yet.</td></tr>';
   $("#l-clear").onclick=async()=>{await api("/api/logs",{method:"DELETE"});vLogs();};
 }
 
 async function vSettings(){
   const s=await api("/api/settings").catch(()=>({}));
-  show(`<div class="card"><h3>Settings</h3><p class="hint">Stored in the database, next to the router data.</p>
+  const strats=(STRATS.length?STRATS:[{id:"priority",label:"Priority"}]).map(x=>x.id);
+  const field=(key,label,value,type="text",hint="")=>`<div><label>${esc(label)}</label>
+    <input id="set-${key}" type="${type}" value="${esc(value??"")}" ${hint?`title="${esc(hint)}"`:""} /></div>`;
+  const toggle=(key,label,value,hint="")=>`<div><label>${esc(label)}</label>
+    <select id="set-${key}"><option value="true" ${value?"selected":""}>on</option><option value="false" ${value?"":"selected"}>off</option></select>
+    ${hint?`<div style="font-size:11px;color:var(--dim);margin-top:3px">${esc(hint)}</div>`:""}</div>`;
+  show(`<div class="card">
+    <h3>${fa("tab.settings")==="تنظیمات"?"تنظیمات":"Settings"}</h3>
+    <p class="hint">Every value is stored in the database and applied immediately.</p>
+    <div class="sect">Routing</div>
     <div class="row">
-      <div><label>Key</label><input id="s-key" placeholder="defaultCombo" /></div>
-      <div><label>Value (JSON)</label><input id="s-val" placeholder='"value"' /></div>
-      <div style="flex:0"><button class="btn pri" id="s-save">Save</button></div>
+      ${field("defaultStrategy","Default strategy",s.defaultStrategy||"priority","text","priority | round-robin | least-used | fill-first | random | cost-optimized | failover")}
+      ${field("defaultCombo","Default combo",s.defaultCombo||"","text","used when a client asks for the generic model")}
+      ${toggle("autoFailover","Automatic failover",s.autoFailover!==false&&s.autoFailover!=="false","try the next target when one fails")}
+      ${toggle("relayContext","Context relay",s.relayContext!==false&&s.relayContext!=="false","send a handoff summary when the model changes")}
     </div>
-    <pre class="key" style="padding:13px;border-radius:10px;overflow:auto;color:#a9d5ff">${esc(JSON.stringify(s,null,2))}</pre></div>`);
+    <div class="sect">Resilience</div>
+    <div class="row">
+      ${field("breakerThreshold","Breaker threshold",s.breakerThreshold??3,"number","failures before a provider is paused")}
+      ${field("breakerCooldownMs","Breaker cooldown (ms)",s.breakerCooldownMs??60000,"number")}
+      ${field("modelLockoutMs","Model lockout (ms)",s.modelLockoutMs??300000,"number","a model that fails everywhere is paused for this long")}
+    </div>
+    <div class="sect">Cache</div>
+    <div class="row">
+      ${toggle("cacheEnabled","Response cache",s.cacheEnabled!==false&&s.cacheEnabled!=="false")}
+      ${field("cacheTtlMs","Cache lifetime (ms)",s.cacheTtlMs??300000,"number")}
+    </div>
+    <div class="sect">Registry</div>
+    <div class="row">
+      ${toggle("registrySyncEnabled","Auto sync catalogues",s.registrySyncEnabled!==false&&s.registrySyncEnabled!=="false")}
+      ${field("registrySyncIntervalMs","Sync interval (ms)",s.registrySyncIntervalMs??3600000,"number")}
+      ${field("registryUrl","Remote registry URL",s.registryUrl||"","text","a JSON document with a providers array")}
+    </div>
+    <div class="sect">Data</div>
+    <div class="row">
+      ${field("backupIntervalMs","Backup interval (ms)",s.backupIntervalMs??21600000,"number","0 disables the automatic backups")}
+      ${field("usageRetentionDays","Usage retention (days)",s.usageRetentionDays??30,"number")}
+      ${field("telegramModel","Telegram default model",s.telegramModel||"beam-free")}
+    </div>
+    <div class="row" style="margin-bottom:0">
+      <div style="flex:0"><button class="btn pri" id="s-save">Save settings</button></div>
+      <div style="flex:0"><button class="btn" id="s-reset">Reset to defaults</button></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Raw configuration</h3>
+    <pre class="key" style="padding:13px;border-radius:10px;overflow:auto;color:var(--accent2)">${esc(JSON.stringify(s,null,2))}</pre>
+  </div>`);
   $("#s-save").onclick=async()=>{
-    try{let v;try{v=JSON.parse($("#s-val").value)}catch{v=$("#s-val").value}
-      await api("/api/settings",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({[$("#s-key").value]:v})});
-      toast("saved");vSettings();
-    }catch(e){toast(e.message,true);}
+    const patch={};
+    for(const el of $$("[id^=set-]")){
+      const key=el.id.slice(4);
+      patch[key]=el.type==="number"?Number(el.value):el.value;
+    }
+    try{await jpatch("/api/settings",patch);toast("settings saved");vSettings();}
+    catch(e){toast(e.message,true);}
+  };
+  $("#s-reset").onclick=async()=>{
+    const defaults={defaultStrategy:"priority",autoFailover:"true",relayContext:"true",cacheEnabled:"true",
+      cacheTtlMs:300000,breakerThreshold:3,breakerCooldownMs:60000,modelLockoutMs:300000,
+      registrySyncEnabled:"true",registrySyncIntervalMs:3600000,backupIntervalMs:21600000,usageRetentionDays:30};
+    try{await jpatch("/api/settings",defaults);toast("defaults restored");vSettings();}
+    catch(e){toast(e.message,true);}
   };
 }
 
 /* ============================ boot ============================ */
 $("#sync").onclick=async()=>{
-  const b=$("#sync");b.disabled=true;b.textContent="⟳ syncing…";
+  const b=$("#sync");b.disabled=true;b.textContent="⟳ …";
   try{const r=await jpost("/api/providers/sync",{});
     const ok=(r.results||[]).filter(x=>x.ok).length;
     toast(`synced ${ok}/${(r.results||[]).length} catalogues`);loadAll();}
   catch(e){toast(e.message,true);}
-  b.disabled=false;b.textContent="⟳ Sync providers";
+  b.disabled=false;b.innerHTML='⟳ <span data-i18n="btn.sync">Sync</span>';applyLang();
 };
-$("#newkey").onclick=()=>{TAB="keys";render();};
+applyLang();
 loadAll();
 </script>
 </body>

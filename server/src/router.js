@@ -3,6 +3,10 @@
 // usage.
 import { db, nowIso } from "./db.js";
 import { pickKey, reportKey as reportPoolKey } from "./keypool.js";
+import { getCombo, orderTargets, isAvailable, reportSuccess, reportFailure, modelLocked, lockModel } from "./routing.js";
+import { cacheGet, cacheSet } from "./metrics.js";
+import { sessionId, remember, handoff } from "./session.js";
+import { getSetting, boolSetting, numberSetting } from "./settings.js";
 import { connectionShape, providerById } from "./providers.js";
 import * as opencode from "./providers/opencode.js";
 import { getRegistry, getCatalogue, transformFor } from "./registry.js";
@@ -61,7 +65,7 @@ export function activeConnections() {
  * Resolve "provider/model", "combo" or a bare model name into an ordered list
  * of upstream connections to try.
  */
-export function resolveTargets(requestedModel) {
+export function resolveTargets(requestedModel, comboStrategy = "priority") {
   const connections = activeConnections();
   const model = String(requestedModel || "").trim();
   if (!model) return [];
@@ -71,21 +75,24 @@ export function resolveTargets(requestedModel) {
   const exact = connections.find((c) => (c.models || []).includes(model));
   if (exact) return [{ conn: exact, model, free: !!exact.registry }];
 
-  // combo: use its members, each entry "provider/model"
-  const combo = db.prepare("SELECT members FROM combos WHERE name = ? AND isActive = 1").get(model);
-  if (combo) {
-    let members = [];
-    try {
-      members = JSON.parse(combo.members || "[]");
-    } catch {}
-    return members
-      .map((entry) => {
-        const [provider, ...rest] = String(entry).split("/");
-        const conn = connections.find((c) => c.provider === provider);
-        if (!conn) return null;
-        return { conn, model: rest.join("/") || conn.modelPrefix || conn.defaultModel || "" };
-      })
-      .filter(Boolean);
+  // an alias points at another model name
+  const alias = db.prepare("SELECT target FROM model_aliases WHERE name = ?").get(model);
+  if (alias) return resolveTargets(alias.target, comboStrategy);
+
+  // a combo is a named fallback chain
+  const namedCombo = getCombo(model);
+  if (namedCombo && namedCombo.isActive === 1) {
+    const members = Array.isArray(namedCombo.members) ? namedCombo.members : [];
+    const expanded = [];
+    for (const member of members) {
+      const sub = resolveTargets(member, comboStrategy);
+      if (sub.length) expanded.push(...sub);
+    }
+    if (expanded.length) {
+      const healthy = expanded.filter((t) => isAvailable(t.conn.provider));
+      const list = healthy.length ? healthy : expanded;
+      return orderTargets(list, namedCombo.strategy || comboStrategy);
+    }
   }
 
   // the full id may be a catalogue entry of a configured connection
@@ -100,10 +107,10 @@ export function resolveTargets(requestedModel) {
     const provider = model.slice(0, slash);
     const rest = model.slice(slash + 1);
     const conn = connections.find((c) => c.provider === provider);
-    if (conn) return [{ conn, model: rest || conn.modelPrefix || conn.defaultModel || "" }];
+    if (conn) return [{ conn, model: rest || conn.modelPrefix || conn.defaultModel || "", free: !!conn.registry }];
     // The slash can belong to the model id itself (Qwen/Qwen2.5-7B-Instruct),
     // so the full id is tried on every configured connection.
-    const asFullId = connections.filter((c) => !c.registry).map((c) => ({ conn: c, model }));
+    const asFullId = connections.filter((c) => !c.registry).map((c) => ({ conn: c, model, free: false }));
     if (asFullId.length) return asFullId;
     return [];
   }
@@ -117,13 +124,13 @@ export function resolveTargets(requestedModel) {
   }
   const prefixed = connections.filter((c) => !c.registry && c.modelPrefix && model.startsWith(c.modelPrefix));
   if (prefixed.length) {
-    return prefixed.map((conn) => ({ conn, model: model.slice(conn.modelPrefix.length).replace(/^\//, "") || conn.defaultModel || "" }));
+    return prefixed.map((conn) => ({ conn, model: model.slice(conn.modelPrefix.length).replace(/^\//, "") || conn.defaultModel || "", free: false }));
   }
   const exactMatches = connections.filter((c) => !c.registry && (c.models || []).includes(model));
-  if (exactMatches.length) return exactMatches.map((conn) => ({ conn, model }));
+  if (exactMatches.length) return exactMatches.map((conn) => ({ conn, model, free: false }));
   return connections
     .filter((c) => !c.registry)
-    .map((conn) => ({ conn, model: conn.defaultModel || model }));
+    .map((conn) => ({ conn, model: conn.defaultModel || model, free: false }));
 }
 
 function buildHeaders(conn, keyOverride) {
@@ -165,9 +172,15 @@ export function recordUsage({ provider, model, apiKeyId, status, promptTokens, o
  * Dispatch a chat request. `clientProtocol` is the protocol the caller speaks.
  * Returns { response, status }.
  */
-export async function dispatch({ clientProtocol, body, apiKeyId, stream = false }) {
+export async function dispatch({ clientProtocol, body, apiKeyId, stream = false, headers = {} }) {
   const requestedModel = body?.model;
-  const targets = resolveTargets(requestedModel);
+  if (modelLocked(String(requestedModel || ""))) {
+    return {
+      status: 429,
+      payload: { error: { message: `model "${requestedModel}" is locked out after repeated failures`, type: "model_locked" } },
+    };
+  }
+  const targets = boolSetting("autoFailover") ? resolveTargets(requestedModel, getSetting("defaultStrategy")) : resolveTargets(requestedModel).slice(0, 1);
   if (!targets.length) {
     return {
       status: 404,
@@ -175,7 +188,15 @@ export async function dispatch({ clientProtocol, body, apiKeyId, stream = false 
     };
   }
 
+  if (boolSetting("cacheEnabled") && !stream && body?.stream !== true) {
+    const cached = cacheGet("cache", requestedModel, body);
+    if (cached) {
+      return { status: 200, payload: cached };
+    }
+  }
+  const session = sessionId(headers || {}, body);
   const attempts = [];
+  let handoffNote = null; // the last handoff that was actually sent
   for (const target of targets) {
     const conn = target.conn;
     const model = target.model || conn.defaultModel || requestedModel;
@@ -206,6 +227,17 @@ export async function dispatch({ clientProtocol, body, apiKeyId, stream = false 
       url = upstreamUrl(conn.baseUrl, upstreamProtocol, model, stream);
       payload = toUpstream(upstreamProtocol, body, model);
       headers = buildHeaders(conn);
+    }
+
+    // A model that is not reachable from this upstream must not break the
+    // conversation: the handoff tells the new upstream what was said before.
+    // It is computed per attempt - a target that fails must not consume it.
+    if (session && boolSetting("relayContext")) {
+      const note = handoff(session, model, conn.provider, body?.messages);
+      if (note && Array.isArray(payload?.messages)) {
+        payload = { ...payload, messages: [note, ...payload.messages] };
+        handoffNote = note;
+      }
     }
 
     // Try the key candidates in order. A key the pool rejected (401/403) or
@@ -254,7 +286,14 @@ export async function dispatch({ clientProtocol, body, apiKeyId, stream = false 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         attempts.push({ conn: conn.provider, status: res.status, error: text.slice(0, 200) });
+        if (res.status >= 500 || res.status === 429) reportFailure(conn.provider, text.slice(0, 120));
         continue;
+      }
+      reportSuccess(conn.provider);
+      if (session) {
+        try {
+          remember(session, { model, provider: conn.provider, messages: body?.messages || [] });
+        } catch {}
       }
       // The key that served the request is marked as working, so the rotation
       // keeps it in the pool and stops hammering it.
@@ -296,6 +335,11 @@ export async function dispatch({ clientProtocol, body, apiKeyId, stream = false 
         outputTokens: usage.completion_tokens || usage.output_tokens || usage.candidatesTokenCount || 0,
       });
       let normalized = toClient(upstreamProtocol, data, requestedModel);
+      if (!clientWantsStream) {
+        try {
+          cacheSet("cache", requestedModel, body, normalized, numberSetting("cacheTtlMs"));
+        } catch {}
+      }
       if (aliasMap && aliasMap.size) {
         normalized = transform ? transform.restoreResponse(normalized, aliasMap) : opencode.restoreToolNames(normalized, aliasMap);
       }

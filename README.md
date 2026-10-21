@@ -57,12 +57,12 @@ The image listens on `0.0.0.0:7860` and keeps its database in `DATA_DIR`
 ### Client keys
 
 Create a key in the dashboard (or set `REQUIRE_API_KEY` before the first start
-to get a bootstrap key). Send it as `x-9router-key`, as `Authorization: Bearer
+to get a bootstrap key). Send it as `x-magoco-key`, as `Authorization: Bearer
 <key>`, or as `?key=<key>`.
 
 ```bash
 curl http://localhost:7860/v1/chat/completions \
-  -H "x-9router-key: sk-magoco-..." \
+  -H "x-magoco-key: sk-magoco-..." \
   -H "content-type: application/json" \
   -d '{"model":"beam-free","messages":[{"role":"user","content":"hi"}]}'
 ```
@@ -88,6 +88,72 @@ export ANTHROPIC_AUTH_TOKEN=sk-magoco-...
 
 The gateway speaks the Anthropic Messages API, translates to whichever upstream
 is selected, and translates the answer back.
+
+## Routing that survives a broken provider
+
+The important part of a gateway is what happens when an upstream is down.
+
+- **Combos** - a named, ordered list of targets. Use the combo name as the
+  model and the router walks the list until one answers.
+- **Strategies** - priority, round robin, least used, fill first, random, cost
+  optimized and failover.
+- **Automatic failover** - a 401, 429, 5xx or a missing model moves the
+  request to the next target inside the same request.
+- **Circuit breaker** - a provider that fails repeatedly is paused, then
+  half-opened and retried.
+- **Model lockout** - a model that fails everywhere is paused for a while.
+- **Context relay** - the router remembers each conversation. When it has to
+  switch to another model, the new model receives a handoff summary of the
+  earlier turns, so the thread does not break.
+
+```bash
+# a combo is a normal model name
+curl http://localhost:7860/v1/chat/completions \
+  -H "x-magoco-key: sk-magoco-..." \
+  -H "x-magoco-session: my-session" \
+  -H "content-type: application/json" \
+  -d '{"model":"free-stack","messages":[{"role":"user","content":"hi"}]}'
+```
+
+## Usage, cost and health
+
+- calls, tokens, errors, latency percentiles and uptime per provider
+- a cost table per provider and model
+- a request log, a cache with hit/miss counters
+- a timeline per day, a breakdown per key and per model
+- CSV export of every event
+
+## Backups
+
+```bash
+curl -X POST http://localhost:7860/api/backups -d '{"label":"before the change"}'
+curl http://localhost:7860/api/backups                # list
+curl -X POST http://localhost:7860/api/backups/<id>/restore
+```
+
+A backup is a consistent copy of the whole database. Restoring swaps the
+tables back and the running process keeps working.
+
+## Telegram bot
+
+The whole gateway from a chat window: status, models, chat with any model,
+combos, keys, providers, usage, health, logs, backups and settings.
+
+1. Create a bot with [@BotFather](https://t.me/BotFather) and copy the token.
+2. In the dashboard, open **Telegram**, paste the token and your numeric user
+   id, and press *Save & start*.
+
+Only the allow-listed ids can talk to the bot.
+
+| Command | What it does |
+|---|---|
+| `/status` | health and traffic |
+| `/models` | the catalogues that are available |
+| `/use <model>` | pick the model for `/chat` |
+| `/chat <text>` | talk to the selected model |
+| `/combos` `/keys` `/providers` | the configuration |
+| `/usage` `/health` `/logs` | the observability |
+| `/backup` `/restore <id>` | snapshots |
 
 ## Key pool
 

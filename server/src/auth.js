@@ -4,12 +4,18 @@
 import crypto from "node:crypto";
 import { db, nowIso } from "./db.js";
 
-const CLIENT_KEY_HEADER = "x-9router-key";
+const CLIENT_KEY_HEADER = "x-magoco-key";
+// The header this project used under an earlier name still works, so old
+// clients keep running. It is not advertised anywhere.
+const LEGACY_KEY_HEADERS = ["x-9router-key"];
 
 export function extractClientKey(request) {
   const headers = request.headers || {};
   const header = headers[CLIENT_KEY_HEADER];
   if (header) return String(header).trim();
+  for (const legacy of LEGACY_KEY_HEADERS) {
+    if (headers[legacy]) return String(headers[legacy]).trim();
+  }
   const auth = headers["authorization"];
   if (auth && /^Bearer\s+/i.test(auth)) return auth.replace(/^Bearer\s+/i, "").trim();
   return "";

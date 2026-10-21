@@ -9,6 +9,12 @@ import { fileURLToPath } from "node:url";
 import { db, getSettings, updateSettings, nowIso } from "./db.js";
 import { logRequest } from "./log.js";
 import * as keyPool from "./keypool.js";
+import * as routing from "./routing.js";
+import * as metrics from "./metrics.js";
+import * as settings from "./settings.js";
+import * as backup from "./backup.js";
+import * as telegram from "./telegram.js";
+import * as session from "./session.js";
 import {
   createApiKey, createSessionToken, dashboardPassword, deleteApiKey,
   extractClientKey, findApiKey, listApiKeys, parseCookies, verifySessionToken,
@@ -101,10 +107,22 @@ const routes = [];
 const route = (method, pattern, handler) => routes.push({ method, pattern, handler });
 
 // --- LLM API (client API key) ---
+function clientRateGuard(req, res) {
+  const key = extractClientKey(req);
+  if (!key) return true;
+  const id = findApiKey(key)?.id;
+  const limit = metrics.checkRateLimit(id);
+  if (limit.allowed) return true;
+  res.setHeader("retry-after", String(limit.retryAfter || 60));
+  json(res, 429, { error: { message: limit.reason, type: "rate_limit_exceeded" } });
+  return false;
+}
+
 route("POST", /^\/v1\/chat\/completions$/, async (req, res, _m, body) => {
+  if (!clientRateGuard(req, res)) return;
   const key = requireClientKey(req, res);
   if (!key) return;
-  const result = await dispatch({ clientProtocol: "openai", body, apiKeyId: key.id });
+  const result = await dispatch({ clientProtocol: "openai", body, apiKeyId: key.id, headers: req.headers });
   if (result.stream) {
     res.writeHead(result.status, { ...result.headers, "access-control-allow-origin": "*" });
     result.stream.pipeTo(res).catch(() => {});
@@ -114,9 +132,10 @@ route("POST", /^\/v1\/chat\/completions$/, async (req, res, _m, body) => {
 });
 
 route("POST", /^\/v1\/messages$/, async (req, res, _m, body) => {
+  if (!clientRateGuard(req, res)) return;
   const key = requireClientKey(req, res);
   if (!key) return;
-  const result = await dispatch({ clientProtocol: "anthropic", body, apiKeyId: key.id });
+  const result = await dispatch({ clientProtocol: "anthropic", body, apiKeyId: key.id, headers: req.headers });
   if (result.stream) {
     res.writeHead(result.status, { ...result.headers, "access-control-allow-origin": "*" });
     result.stream.pipeTo(res).catch(() => {});
@@ -233,12 +252,14 @@ route("DELETE", /^\/api\/providers\/([\w-]+)$/, (req, res, m) => {
 
 route("GET", /^\/api\/settings$/, (req, res) => {
   if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
-  json(res, 200, getSettings());
+  json(res, 200, settings.allSettings());
 });
 
 route("PATCH", /^\/api\/settings$/, async (req, res, _m, body) => {
   if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
-  json(res, 200, updateSettings(body));
+  const saved = settings.saveSettings(body);
+  if ("registrySyncIntervalMs" in body) startRegistrySync(Number(body.registrySyncIntervalMs) || 3600000);
+  json(res, 200, saved);
 });
 
 route("GET", /^\/api\/keypool$/, (req, res) => {
@@ -298,6 +319,179 @@ route("DELETE", /^\/api\/keypool\/([\w-]+)$/, (req, res, m) => {
   json(res, 200, { deleted: keyPool.removeKey(m[1]) });
 });
 
+route("GET", /^\/api\/combos$/, (req, res) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, { combos: routing.listCombos().map((c) => ({ ...c, members: JSON.parse(c.members || "[]") })) });
+});
+
+route("POST", /^\/api\/combos$/, (req, res, _m, body) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  const result = routing.createCombo(body);
+  if (result.error) return json(res, 400, { error: result.error });
+  json(res, 200, result);
+});
+
+route("PATCH", /^\/api\/combos\/([\w-]+)$/, (req, res, m, body) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  const result = routing.updateCombo(m[1], body);
+  if (result.error) return json(res, 404, { error: result.error });
+  json(res, 200, result);
+});
+
+route("DELETE", /^\/api\/combos\/([\w-]+)$/, (req, res, m) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, { deleted: routing.deleteCombo(m[1]) });
+});
+
+route("GET", /^\/api\/strategies$/, (req, res) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, { strategies: routing.listStrategies() });
+});
+
+route("GET", /^\/api\/health\/metrics$/, (req, res) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, {
+    ...metrics.healthSnapshot(),
+    breakers: routing.breakerSnapshot(),
+    lockouts: routing.lockoutSnapshot(),
+    cache: metrics.cacheStats(),
+  });
+});
+
+route("GET", /^\/api\/cache$/, (req, res) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, metrics.cacheStats());
+});
+
+route("DELETE", /^\/api\/cache$/, (req, res) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, { cleared: metrics.cacheClear() });
+});
+
+route("GET", /^\/api\/limits$/, (req, res) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, { limits: metrics.listRateLimits() });
+});
+
+route("POST", /^\/api\/limits$/, (req, res, _m, body) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, metrics.setRateLimit(body.apiKeyId || body.id, body));
+});
+
+route("GET", /^\/api\/pricing$/, (req, res) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, { prices: metrics.listPrices() });
+});
+
+route("POST", /^\/api\/pricing$/, (req, res, _m, body) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, metrics.setPrice(body));
+});
+
+route("GET", /^\/api\/aliases$/, (req, res) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, { aliases: db.prepare("SELECT * FROM model_aliases ORDER BY name").all() });
+});
+
+route("POST", /^\/api\/aliases$/, (req, res, _m, body) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  const name = String(body.name || "").trim();
+  const target = String(body.target || "").trim();
+  if (!name || !target) return json(res, 400, { error: "name and target are required" });
+  db.prepare("INSERT INTO model_aliases (name, target, createdAt) VALUES (?, ?, ?) ON CONFLICT(name) DO UPDATE SET target = excluded.target").run(name, target, nowIso());
+  json(res, 200, { name, target });
+});
+
+route("DELETE", /^\/api\/aliases\/([\w.-]+)$/, (req, res, m) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, { deleted: db.prepare("DELETE FROM model_aliases WHERE name = ?").run(decodeURIComponent(m[1])).changes > 0 });
+});
+
+route("GET", /^\/api\/breaker$/, (req, res) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, { breakers: routing.breakerSnapshot(), lockouts: routing.lockoutSnapshot() });
+});
+
+route("POST", /^\/api\/breaker\/reset$/, (req, res, _m, body) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  if (body?.key) db.prepare("DELETE FROM circuit_state WHERE key = ?").run(body.key);
+  else db.prepare("DELETE FROM circuit_state").run();
+  if (body?.model) routing.unlockModel(body.model);
+  json(res, 200, { reset: true });
+});
+
+route("DELETE", /^\/api\/lockouts\/([\w.-]+)$/, (req, res, m) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, { deleted: routing.unlockModel(decodeURIComponent(m[1])) });
+});
+
+route("GET", /^\/api\/backups$/, (req, res) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, { backups: backup.listBackups() });
+});
+
+route("POST", /^\/api\/backups$/, (req, res, _m, body) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  try {
+    const result = backup.createBackup({ label: body?.label || "manual" });
+    json(res, 200, result);
+  } catch (err) {
+    json(res, 500, { error: { message: String(err.message || err) } });
+  }
+});
+
+route("GET", /^\/api\/backups\/([\w.-]+)\/download$/, (req, res, m) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  const file = backup.backupPath(m[1]);
+  if (!file) return json(res, 404, { error: { message: "backup not found" } });
+  const data = fs.readFileSync(file);
+  res.writeHead(200, {
+    "content-type": "application/octet-stream",
+    "content-disposition": `attachment; filename="${m[1]}.sqlite"`,
+  });
+  res.end(data);
+});
+
+route("POST", /^\/api\/backups\/([\w.-]+)\/restore$/, (req, res, m) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  const result = backup.restoreBackup(m[1]);
+  if (result.error) return json(res, 400, { error: { message: result.error } });
+  json(res, 200, result);
+});
+
+route("DELETE", /^\/api\/backups\/([\w.-]+)$/, (req, res, m) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, { deleted: backup.deleteBackup(m[1]) });
+});
+
+route("GET", /^\/api\/telegram$/, (req, res) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, telegram.status());
+});
+
+route("POST", /^\/api\/telegram$/, (req, res, _m, body) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  const result = telegram.saveConfig(body);
+  if (body?.enabled) telegram.start();
+  else telegram.stop();
+  json(res, 200, result);
+});
+
+route("POST", /^\/api\/telegram\/test$/, async (req, res) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, await telegram.testConnection());
+});
+
+route("GET", /^\/api\/sessions$/, (req, res) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, { sessions: session.listSessions(), stats: session.sessionStats() });
+});
+
+route("DELETE", /^\/api\/sessions\/([\w.-]+)$/, (req, res, m) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, { deleted: session.clearSession(decodeURIComponent(m[1])) });
+});
+
 route("GET", /^\/api\/logs$/, (req, res) => {
   if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
   const rows = db.prepare("SELECT * FROM request_log ORDER BY id DESC LIMIT 200").all();
@@ -317,6 +511,21 @@ route("POST", /^\/api\/console$/, async (req, res, _m, body) => {
   const result = await dispatch({ clientProtocol: "openai", body, apiKeyId: null });
   logRequest({ method: "POST", path: "/api/console", model: body?.model, status: result.status, durationMs: Date.now() - t0, detail: result.payload?.error?.message || "" });
   json(res, result.status, result.payload);
+});
+
+route("GET", /^\/api\/usage\/timeline$/, (req, res) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  json(res, 200, metrics.usageTimeline(Number(req.query?.get("days")) || 7));
+});
+
+route("GET", /^\/api\/usage\/export$/, (req, res) => {
+  if (!isDashboardAuthed(req)) return json(res, 401, { error: "Unauthorized" });
+  const csv = metrics.usageCsv(Number(req.query?.get("days")) || 30);
+  res.writeHead(200, {
+    "content-type": "text/csv; charset=utf-8",
+    "content-disposition": `attachment; filename="usage-${new Date().toISOString().slice(0, 10)}.csv"`,
+  });
+  res.end(csv);
 });
 
 route("GET", /^\/api\/usage\/summary$/, (req, res) => {
@@ -385,7 +594,9 @@ const server = http.createServer(async (req, res) => {
 });
 
 opencode.startCatalogueRefresh();
-startRegistrySync();
+startRegistrySync(settings.numberSetting("registrySyncIntervalMs"));
+backup.scheduleBackups(settings.numberSetting("backupIntervalMs"));
+telegram.start();
 
 server.listen(PORT, HOST, () => {
   console.log(`[magoco-router] listening on ${HOST}:${PORT}`);

@@ -97,6 +97,76 @@ CREATE TABLE IF NOT EXISTS key_pool (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_keypool_sealed ON key_pool(provider, sealedKey);
 
+CREATE TABLE IF NOT EXISTS circuit_state (
+  key       TEXT PRIMARY KEY,
+  state     TEXT NOT NULL DEFAULT "closed",
+  failures  INTEGER NOT NULL DEFAULT 0,
+  openedAt  TEXT,
+  until     TEXT,
+  lastError TEXT
+);
+
+CREATE TABLE IF NOT EXISTS model_lockout (
+  model    TEXT PRIMARY KEY,
+  until    TEXT,
+  reason   TEXT,
+  createdAt TEXT
+);
+
+CREATE TABLE IF NOT EXISTS cache_entries (
+  key       TEXT PRIMARY KEY,
+  provider  TEXT,
+  model     TEXT,
+  payload   TEXT NOT NULL,
+  hits      INTEGER NOT NULL DEFAULT 0,
+  createdAt TEXT,
+  expiresAt TEXT,
+  lastHitAt TEXT
+);
+
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key       TEXT PRIMARY KEY,
+  rpm       INTEGER NOT NULL DEFAULT 0,
+  tpm       INTEGER NOT NULL DEFAULT 0,
+  updatedAt TEXT
+);
+
+CREATE TABLE IF NOT EXISTS pricing (
+  provider          TEXT NOT NULL,
+  model             TEXT NOT NULL DEFAULT "*",
+  inputPerMillion   REAL NOT NULL DEFAULT 0,
+  outputPerMillion  REAL NOT NULL DEFAULT 0,
+  updatedAt         TEXT,
+  PRIMARY KEY (provider, model)
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id        TEXT PRIMARY KEY,
+  model     TEXT,
+  provider  TEXT,
+  turns     TEXT,
+  updatedAt TEXT
+);
+
+CREATE TABLE IF NOT EXISTS backups (
+  id        TEXT PRIMARY KEY,
+  label     TEXT,
+  file      TEXT,
+  size      INTEGER,
+  createdAt TEXT
+);
+
+CREATE TABLE IF NOT EXISTS counters (
+  key   TEXT PRIMARY KEY,
+  value TEXT
+);
+
+CREATE TABLE IF NOT EXISTS model_aliases (
+  name    TEXT PRIMARY KEY,
+  target  TEXT NOT NULL,
+  createdAt TEXT
+);
+
 CREATE TABLE IF NOT EXISTS key_pool_sources (
   id         TEXT PRIMARY KEY,
   url        TEXT NOT NULL UNIQUE,
@@ -114,6 +184,19 @@ CREATE TABLE IF NOT EXISTS settings (
 `);
 
 export const nowIso = () => new Date().toISOString();
+
+// Older databases were created before a column existed: add it in place.
+export function ensureColumn(table, column, definition) {
+  try {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+    if (!cols.includes(column)) {
+      db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`).run();
+    }
+  } catch {}
+}
+
+ensureColumn("combos", "description", "TEXT");
+ensureColumn("combos", "strategy", "TEXT DEFAULT 'priority'");
 
 export function getSettings() {
   const row = db.prepare("SELECT data FROM settings WHERE id = 1").get();
